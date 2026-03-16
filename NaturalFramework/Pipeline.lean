@@ -65,8 +65,8 @@ structure Pipeline (I : InterfaceTypes) where
   filter      : I.indexed → I.selected
   attend      : I.policy → I.selected → I.ranked
   remember    : I.ranked → I.persisted
-  /-- Backward pass (inside the substrate) -/
-  consolidate : I.policy → I.ranked → I.policy
+  /-- Backward pass (inside the substrate, reads from Remember asynchronously) -/
+  consolidate : I.policy → I.persisted → I.policy
 
 /-- The forward data path: raw input to persisted output.
     Attend reads policy from the substrate. -/
@@ -78,15 +78,15 @@ def Pipeline.forward (p : Pipeline I) (input : I.raw) (policy : I.policy)
   p.attend policy selected
 
 /-- One cycle of the pipeline.
-    Forward pass produces ranked output. Ranked output forks:
-    - Remember persists the episode (forward)
-    - Consolidate derives a policy update (backward)
+    Forward pass produces ranked output. Remember persists it.
+    Consolidate reads from Remember (persisted) asynchronously
+    and derives a policy update.
     Returns updated policy and persisted state. -/
 def Pipeline.cycle (p : Pipeline I) (input : I.raw) (policy : I.policy)
     : I.policy × I.persisted :=
   let ranked := p.forward input policy
   let persisted := p.remember ranked
-  let policy' := p.consolidate policy ranked
+  let policy' := p.consolidate policy persisted
   (policy', persisted)
 
 /-- The pipeline iterated n times, given a stream of inputs. -/

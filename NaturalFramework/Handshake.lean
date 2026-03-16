@@ -277,9 +277,9 @@ def FunctorNatural (F : PipelineFunctor A B)
   -- Remember commutes (forward: ranked → persisted)
   (∀ r : A.ranked, F.map_persisted (pA.remember r) = pB.remember (F.map_ranked r)) ∧
   -- Backward pass --
-  -- Consolidate commutes (inside substrate: ranked → policy)
-  (∀ (p : A.policy) (r : A.ranked),
-    F.map_policy (pA.consolidate p r) = pB.consolidate (F.map_policy p) (F.map_ranked r))
+  -- Consolidate commutes (inside substrate: persisted → policy)
+  (∀ (p : A.policy) (s : A.persisted),
+    F.map_policy (pA.consolidate p s) = pB.consolidate (F.map_policy p) (F.map_persisted s))
 
 -- ============================================================
 -- Trace: feedback loop
