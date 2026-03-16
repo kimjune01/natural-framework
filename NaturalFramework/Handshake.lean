@@ -7,32 +7,36 @@ import NaturalFramework.Contracts
 Formalizes the composition argument from
 [The Handshake](https://june.kim/the-handshake).
 
-The six steps are morphisms inside a monad, constrained by the data
-processing inequality. This module formalizes:
+The six roles are morphisms inside a monad, constrained by the data
+processing inequality. Five compose forward; Consolidate runs backward
+inside the substrate. This module formalizes:
 
-- The handshake property: postcondition of step N is precondition of step N+1
-- Ordering: rearranging steps breaks type compatibility
+- The handshake property: postcondition of stage N is precondition of stage N+1
+- Ordering: rearranging forward stages breaks type compatibility
 - Data processing inequality: information decreases monotonically
 - Four claims from contracts
 - Cross-domain functor: structure-preserving map between pipeline instances
 - Traced feedback: Remember's output feeds Perceive's input
+- Consolidate as backward pass: inside the substrate, reshaping parameters
 -/
 
 -- ============================================================
--- The Handshake: postcondition of step N = precondition of step N+1
+-- The Handshake: postcondition of stage N = precondition of stage N+1
 -- ============================================================
 
-/-- A handshake is a pair of contracts where one step's postcondition
-    implies the next step's precondition. -/
+/-- A handshake is a pair of contracts where one stage's postcondition
+    implies the next stage's precondition. -/
 structure Handshake (β : Type) where
-  /-- Postcondition of the preceding step -/
+  /-- Postcondition of the preceding stage -/
   post : Contract β
-  /-- Precondition of the following step -/
+  /-- Precondition of the following stage -/
   pre : Contract β
   /-- The handshake: post implies pre -/
   compatible : ∀ b : β, post b → pre b
 
-/-- A full pipeline handshake: five interface points, each compatible. -/
+/-- A full forward pipeline handshake: four interface points, each compatible.
+    Consolidate is the backward pass and does not participate in the
+    forward handshake chain. -/
 structure PipelineHandshake (I : InterfaceTypes) where
   /-- Perceive's postcondition implies Cache's precondition -/
   perceive_cache : Handshake I.encoded
@@ -40,10 +44,8 @@ structure PipelineHandshake (I : InterfaceTypes) where
   cache_filter : Handshake I.indexed
   /-- Filter's postcondition implies Attend's precondition -/
   filter_attend : Handshake I.selected
-  /-- Attend's postcondition implies Consolidate's precondition -/
-  attend_consolidate : Handshake I.ranked
-  /-- Consolidate's postcondition implies Remember's precondition -/
-  consolidate_remember : Handshake I.policy
+  /-- Attend's postcondition implies Remember's precondition -/
+  attend_remember : Handshake I.ranked
 
 -- ============================================================
 -- Ordering: rearranging steps breaks type compatibility
@@ -239,7 +241,7 @@ theorem stable_not_near_miss
 
 /-- A pipeline morphism between two domains: maps interface types
     and preserves pipeline structure. If domain A and domain B both
-    implement six morphisms with compatible type signatures, the
+    implement six roles with compatible type signatures, the
     mapping between them is a candidate functor. -/
 structure PipelineFunctor (A B : InterfaceTypes) where
   /-- Map raw states -/
@@ -258,9 +260,11 @@ structure PipelineFunctor (A B : InterfaceTypes) where
   map_persisted : A.persisted → B.persisted
 
 /-- A functor preserves pipeline composition if mapping commutes
-    with each step. This is the naturality condition. -/
+    with each role. This is the naturality condition.
+    Forward stages and backward pass both commute. -/
 def FunctorNatural (F : PipelineFunctor A B)
     (pA : Pipeline A) (pB : Pipeline B) : Prop :=
+  -- Forward stages --
   -- Perceive commutes
   (∀ r : A.raw, F.map_encoded (pA.perceive r) = pB.perceive (F.map_raw r)) ∧
   -- Cache commutes
@@ -270,11 +274,12 @@ def FunctorNatural (F : PipelineFunctor A B)
   -- Attend commutes
   (∀ (p : A.policy) (s : A.selected),
     F.map_ranked (pA.attend p s) = pB.attend (F.map_policy p) (F.map_selected s)) ∧
-  -- Consolidate commutes
+  -- Remember commutes (forward: ranked → persisted)
+  (∀ r : A.ranked, F.map_persisted (pA.remember r) = pB.remember (F.map_ranked r)) ∧
+  -- Backward pass --
+  -- Consolidate commutes (inside substrate: ranked → policy)
   (∀ (p : A.policy) (r : A.ranked),
-    F.map_policy (pA.consolidate p r) = pB.consolidate (F.map_policy p) (F.map_ranked r)) ∧
-  -- Remember commutes
-  (∀ p : A.policy, F.map_persisted (pA.remember p) = pB.remember (F.map_policy p))
+    F.map_policy (pA.consolidate p r) = pB.consolidate (F.map_policy p) (F.map_ranked r))
 
 -- ============================================================
 -- Trace: feedback loop

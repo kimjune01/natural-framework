@@ -1,21 +1,24 @@
 /-!
 # Pipeline
 
-The six-step information processing pipeline as morphisms.
+The information processing pipeline: five forward stages, one backward pass.
 
 Objects are information states. Morphisms are transformations between them.
-The six steps compose sequentially: Perceive → Cache → Filter → Attend →
-Consolidate → Remember, with a feedback trace from Remember to Perceive.
+Five stages compose forward: Perceive → Cache → Filter → Attend → Remember.
+Consolidate runs backward inside the substrate (Remember), reshaping how
+each stage processes on the next cycle.
 
 ## Main definitions
 
-- `Step` — enumeration of the six pipeline steps
-- `Pipeline` — a structure bundling six morphisms with compatible types
-- `Pipeline.compose` — the full cycle composition
+- `Step` — enumeration of the six pipeline roles
+- `Pipeline` — a structure bundling five forward morphisms + backward pass
+- `Pipeline.forward` — the forward data path
+- `Pipeline.cycle` — forward pass + backward pass (Consolidate)
 - `Pipeline.iterate` — repeated application (the recursive loop)
 -/
 
-/-- The six steps of the pipeline. -/
+/-- The six roles of the pipeline.
+    Five are forward stages. Consolidate is the backward pass. -/
 inductive Step where
   | perceive
   | cache
@@ -42,36 +45,48 @@ structure Morphism (α β : Type) where
   step : Step
 
 /-- The six interface types in the pipeline.
-    Each handshake point has a distinct type. -/
+    Five forward handshake points + policy type for the backward pass. -/
 structure InterfaceTypes where
   raw : Type        -- environment input
   encoded : Type    -- after Perceive
   indexed : Type    -- after Cache
   selected : Type   -- after Filter
   ranked : Type     -- after Attend
-  policy : Type     -- after Consolidate
+  policy : Type     -- parameterizes Attend; written by Consolidate
   persisted : Type  -- after Remember (feeds back to Perceive)
 
-/-- A complete pipeline: six morphisms whose types chain. -/
+/-- A complete pipeline: five forward morphisms + one backward pass.
+    Forward: Perceive → Cache → Filter → Attend → Remember
+    Backward: Consolidate (inside the substrate, reshapes parameters) -/
 structure Pipeline (I : InterfaceTypes) where
+  /-- Forward stages -/
   perceive    : I.raw → I.encoded
   cache       : I.encoded → I.indexed
   filter      : I.indexed → I.selected
   attend      : I.policy → I.selected → I.ranked
+  remember    : I.ranked → I.persisted
+  /-- Backward pass (inside the substrate) -/
   consolidate : I.policy → I.ranked → I.policy
-  remember    : I.policy → I.persisted
 
-/-- One cycle of the pipeline.
-    Takes environment input and current policy,
-    returns updated policy and persisted state. -/
-def Pipeline.cycle (p : Pipeline I) (input : I.raw) (policy : I.policy)
-    : I.policy × I.persisted :=
+/-- The forward data path: raw input to persisted output.
+    Attend reads policy from the substrate. -/
+def Pipeline.forward (p : Pipeline I) (input : I.raw) (policy : I.policy)
+    : I.ranked :=
   let encoded := p.perceive input
   let indexed := p.cache encoded
   let selected := p.filter indexed
-  let ranked := p.attend policy selected
+  p.attend policy selected
+
+/-- One cycle of the pipeline.
+    Forward pass produces ranked output. Ranked output forks:
+    - Remember persists the episode (forward)
+    - Consolidate derives a policy update (backward)
+    Returns updated policy and persisted state. -/
+def Pipeline.cycle (p : Pipeline I) (input : I.raw) (policy : I.policy)
+    : I.policy × I.persisted :=
+  let ranked := p.forward input policy
+  let persisted := p.remember ranked
   let policy' := p.consolidate policy ranked
-  let persisted := p.remember policy'
   (policy', persisted)
 
 /-- The pipeline iterated n times, given a stream of inputs. -/
