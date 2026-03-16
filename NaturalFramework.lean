@@ -10,3 +10,4 @@ import NaturalFramework.Contracts
 import NaturalFramework.Boundary
 import NaturalFramework.Corollary
 import NaturalFramework.DeathConditions
+import NaturalFramework.Handshake
