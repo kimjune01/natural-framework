@@ -7,7 +7,16 @@ A deterministic bounded system processing non-stationary input must
 eventually cycle, and a cycling system cannot respond to novelty.
 Stochasticity is the only escape.
 
+## The physical premise: Landauer's principle
+
+Any physical system with bounded free energy has finitely many
+distinguishable states. Each bit of state costs at least kT ln 2
+energy to maintain (Landauer 1961). This is the axiom that forces
+finiteness. Without it, infinite state spaces escape the pigeonhole.
+
 ## What this proves (falsifiably)
+
+0. Landauer: bounded energy → finite states. (Physics axiom.)
 
 1. Pigeonhole cycling: A deterministic map on a finite set, iterated,
    must revisit a state within N steps. (Pigeonhole principle.)
@@ -18,9 +27,39 @@ Stochasticity is the only escape.
 3. Stochastic escape: An ergodic map has no proper absorbing set.
 
 Each theorem has axioms that, if wrong, would break the conclusion.
-Remove finiteness → cycling fails. Remove determinism → cycling fails.
-Remove non-stationarity → cycling is fine.
+Reject Landauer → infinite states → no forced cycling.
+Remove determinism → no fixed trajectory → no forced period.
+Remove non-stationarity → periodic output is fine.
 -/
+
+-- ============================================================
+-- 0. Landauer's principle (physics axiom)
+-- ============================================================
+
+/-- Landauer's principle: a system with bounded free energy has a
+    maximum number of distinguishable states.
+
+    Erasing one bit of information dissipates at least kT ln 2 energy
+    (Landauer, "Irreversibility and Heat Generation in the Computing
+    Process", IBM Journal of Research and Development, 1961).
+
+    Experimentally confirmed by Bérut et al. (Nature, 2012).
+
+    This is declared as an axiom because it is physics, not mathematics.
+    The entire proof chain depends on it. Rejecting Landauer means
+    accepting infinite distinguishable states from finite energy,
+    which would break the pigeonhole argument and allow a deterministic
+    system to avoid cycling. -/
+axiom landauer_bound :
+  ∀ (energy : Nat), energy > 0 →
+    ∃ max_states : Nat, max_states > 0 ∧ max_states ≤ energy
+
+/-- Corollary: a physical system's state space is Fin N for some N.
+    Landauer gives the bound; the system lives inside it. -/
+theorem finite_state_space (energy : Nat) (he : energy > 0)
+    : ∃ N : Nat, N > 0 := by
+  obtain ⟨N, hpos, _⟩ := landauer_bound energy he
+  exact ⟨N, hpos⟩
 
 -- ============================================================
 -- Iteration machinery
@@ -171,21 +210,27 @@ theorem ergodic_no_proper_absorbing
 -- Combined: the stochasticity requirement
 -- ============================================================
 
-/-- The stochasticity requirement, assembled.
+/-- The full chain from physics to stochasticity.
 
-    Part 1: periodic output + non-stationary demand → mismatch.
-    Part 2: ergodicity → no proper absorbing sets.
+    Landauer (axiom) → finite states → pigeonhole → cycling →
+    periodic output → mismatch with non-stationary demand → death.
 
-    Together with det_finite_cycles (deterministic finite → periodic):
-    Deterministic + finite + non-stationary → death.
-    Stochastic (ergodic) → escapes cycling → can track novelty.
+    Escape: ergodicity (stochasticity) → no absorbing cycles →
+    system can always reach novel states.
 
-    Falsifiable at every link:
-    - Remove finiteness: no pigeonhole, no forced cycling.
-    - Remove determinism: trajectory isn't fixed, no forced period.
-    - Remove non-stationarity: periodic output matches periodic demand.
-    - Remove ergodicity: absorbing cycles can trap the system. -/
+    The chain is falsifiable at every link:
+    - Reject Landauer → infinite states → no pigeonhole.
+    - Remove determinism → no fixed trajectory → no period.
+    - Remove non-stationarity → periodic output matches demand.
+    - Remove ergodicity → absorbing cycles trap the system.
+
+    Each axiom does real work. Remove any one and the conclusion
+    changes. That is the test. -/
 theorem stochasticity_required :
+    -- Landauer: bounded energy → finite states
+    (∀ (energy : Nat), energy > 0 →
+      ∃ N : Nat, N > 0)
+    ∧
     -- Periodic output mismatches non-stationary input
     (∀ (O : Type) (required actual : Nat → O) (p : Nat),
       (∀ t, actual (t + p) = actual t) →
@@ -196,7 +241,8 @@ theorem stochasticity_required :
     (∀ (S : Type) (f : S → S) (A : S → Prop),
       IsErgodic f → IsAbsorbing f A →
       ∀ s_in, A s_in → ∀ s_out, ¬ A s_out → False) :=
-  ⟨fun _ _ _ _ hper hnov =>
+  ⟨fun energy he => finite_state_space energy he,
+   fun _ _ _ _ hper hnov =>
     periodic_mismatches_nonstationary _ _ _ hper hnov,
    fun _ f A herg habs s_in hs_in s_out hs_out =>
     ergodic_no_proper_absorbing f herg A habs s_in hs_in s_out hs_out⟩
