@@ -12,3 +12,4 @@ import NaturalFramework.Corollary
 import NaturalFramework.DeathConditions
 import NaturalFramework.Handshake
 import NaturalFramework.Uniqueness
+import NaturalFramework.Stochasticity
