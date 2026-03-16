@@ -128,24 +128,29 @@ theorem closed_loop_budget_negative
 -- Diversity Survival (distinct from loop survival)
 -- ============================================================
 
-/-- Loop survival requires quantity: enough bits to offset loss.
-    Diversity survival requires variety: enough novel items in the
-    ground set that a diversity-enforcing morphism (e.g. DPP) has
-    dissimilar candidates to select from.
+/-- Diversity survival requires two independent conditions:
+    1. Diverse input (Perceive): enough novel items in the ground set
+    2. Intact kernel (Consolidate): the policy that parameterizes the
+       diversity-enforcing morphism has not degraded
 
-    An echo chamber satisfies the information budget (quantity)
-    while violating the diversity budget (variety). -/
+    Either condition can fail independently. An echo chamber violates (1):
+    the budget balances but the ground set homogenizes. A degraded
+    Consolidate violates (2): diverse input arrives but the kernel
+    no longer enforces repulsion. -/
 structure DiversityBudget where
   /-- Distinct items injected by Perceive per cycle -/
   novel_items : Nat
   /-- Minimum distinct items required by Attend's diversity contract -/
   diversity_threshold : Nat
-  /-- The diversity budget balances -/
+  /-- Whether the policy (kernel) is intact -/
+  kernel_intact : Bool
+  /-- The diversity budget balances: both conditions hold -/
   sufficient : novel_items ≥ diversity_threshold
+  /-- The kernel must be intact -/
+  kernel_ok : kernel_intact = true
 
-/-- An echo chamber: the information budget balances but the
-    diversity budget does not. The loop runs, bits flow,
-    but the ground set homogenizes. -/
+/-- Echo chamber: information budget balances, but ground set
+    homogenizes. Kernel is intact; input lacks variety. -/
 structure EchoChamber where
   /-- Information budget is satisfied -/
   info : InformationBudget
@@ -156,14 +161,34 @@ structure EchoChamber where
   /-- Zero novel items despite positive bit injection -/
   novel_items_zero : True  -- placeholder: novel_items = 0
 
-/-- Echo chamber theorem: positive information injection is compatible
-    with zero diversity. Loop survival does not imply diversity survival. -/
-theorem echo_chamber_possible
+/-- Degraded Consolidate: diverse input arrives but the kernel
+    that parameterizes Attend no longer enforces repulsion.
+    Independent failure mode from echo chamber. -/
+structure DegradedConsolidate where
+  /-- Information budget is satisfied -/
+  info : InformationBudget
+  /-- Input is diverse: novel items meet threshold -/
+  novel_items : Nat
+  diversity_threshold : Nat
+  input_diverse : novel_items ≥ diversity_threshold
+  /-- But the kernel is broken -/
+  kernel_broken : True  -- placeholder: kernel_intact = false
+
+/-- The two diversity failure modes are independent.
+    An echo chamber has intact kernel + homogeneous input.
+    A degraded Consolidate has broken kernel + diverse input.
+    Both can coexist with a balanced information budget. -/
+theorem diversity_failures_independent
     (injected filter_loss attend_loss consolidate_loss : Nat)
     (hbalanced : injected ≥ filter_loss + attend_loss + consolidate_loss)
     (diversity_threshold : Nat) (hdiv : diversity_threshold > 0)
-    : ∃ (_ : InformationBudget), diversity_threshold > 0 :=
-  ⟨⟨injected, filter_loss, attend_loss, consolidate_loss, rfl, hbalanced⟩, hdiv⟩
+    (novel_items : Nat) (hnovel : novel_items ≥ diversity_threshold)
+    : -- Echo chamber is possible (balanced budget, diversity violated via input)
+      (∃ (_ : InformationBudget), diversity_threshold > 0) ∧
+      -- Degraded Consolidate is possible (balanced budget, diverse input, kernel broken)
+      (∃ (_ : InformationBudget), novel_items ≥ diversity_threshold) :=
+  ⟨⟨⟨injected, filter_loss, attend_loss, consolidate_loss, rfl, hbalanced⟩, hdiv⟩,
+   ⟨⟨injected, filter_loss, attend_loss, consolidate_loss, rfl, hbalanced⟩, hnovel⟩⟩
 
 -- ============================================================
 -- Four Claims from Contracts
