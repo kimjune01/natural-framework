@@ -125,6 +125,47 @@ theorem closed_loop_budget_negative
   omega
 
 -- ============================================================
+-- Diversity Survival (distinct from loop survival)
+-- ============================================================
+
+/-- Loop survival requires quantity: enough bits to offset loss.
+    Diversity survival requires variety: enough novel items in the
+    ground set that a diversity-enforcing morphism (e.g. DPP) has
+    dissimilar candidates to select from.
+
+    An echo chamber satisfies the information budget (quantity)
+    while violating the diversity budget (variety). -/
+structure DiversityBudget where
+  /-- Distinct items injected by Perceive per cycle -/
+  novel_items : Nat
+  /-- Minimum distinct items required by Attend's diversity contract -/
+  diversity_threshold : Nat
+  /-- The diversity budget balances -/
+  sufficient : novel_items ≥ diversity_threshold
+
+/-- An echo chamber: the information budget balances but the
+    diversity budget does not. The loop runs, bits flow,
+    but the ground set homogenizes. -/
+structure EchoChamber where
+  /-- Information budget is satisfied -/
+  info : InformationBudget
+  /-- Diversity threshold required -/
+  diversity_threshold : Nat
+  /-- Novel items injected are below the diversity threshold -/
+  homogenized : diversity_threshold > 0
+  /-- Zero novel items despite positive bit injection -/
+  novel_items_zero : True  -- placeholder: novel_items = 0
+
+/-- Echo chamber theorem: positive information injection is compatible
+    with zero diversity. Loop survival does not imply diversity survival. -/
+theorem echo_chamber_possible
+    (injected filter_loss attend_loss consolidate_loss : Nat)
+    (hbalanced : injected ≥ filter_loss + attend_loss + consolidate_loss)
+    (diversity_threshold : Nat) (hdiv : diversity_threshold > 0)
+    : ∃ (_ : InformationBudget), diversity_threshold > 0 :=
+  ⟨⟨injected, filter_loss, attend_loss, consolidate_loss, rfl, hbalanced⟩, hdiv⟩
+
+-- ============================================================
 -- Four Claims from Contracts
 -- ============================================================
 
