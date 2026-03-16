@@ -1,0 +1,10 @@
+name = "NaturalFramework"
+version = "0.1.0"
+defaultTargets = ["naturalframework"]
+
+[[lean_lib]]
+name = "NaturalFramework"
+
+[[lean_exe]]
+name = "naturalframework"
+root = "Main"
