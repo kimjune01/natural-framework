@@ -1,11 +1,11 @@
-import NaturalFramework.Stoch
+import NaturalFramework.Kleisli
 
 /-!
 # Pipeline
 
 The information processing pipeline: five forward stages, one backward pass.
 
-Objects are information states. Morphisms are stochastic kernels (`α → M β`).
+Objects are information states. Morphisms are monadic kernels (`α → M β`).
 Five stages compose forward: Perceive → Cache → Filter → Attend → Remember.
 Consolidate runs backward inside the substrate (Remember), reshaping how
 each stage processes on the next cycle.
@@ -47,7 +47,7 @@ structure InterfaceTypes where
     Forward: Perceive → Cache → Filter → Attend → Remember
     Backward: Consolidate (inside the substrate, reshapes parameters)
 
-    All morphisms are stochastic kernels in monad `M`.
+    All morphisms are monadic kernels in monad `M`.
     When `M = Id`, this recovers the deterministic case. -/
 structure Pipeline (M : Type → Type) [Monad M] (I : InterfaceTypes) where
   /-- Forward stages -/

@@ -28,7 +28,7 @@ interface (Consolidate). Both are forced by bounded resources.
 -- ============================================================
 
 /-- If output is a proper subset of input, the count decreases.
-    Selection is forced by bounded storage (Landauer).
+    Selection is forced by bounded storage (capacity_bound).
     Without it, the store fills (shown in Boundary). -/
 theorem filter_reduces
     (input_count output_count : Nat)
@@ -57,7 +57,7 @@ theorem competitive_core_removes
     overflows the free space and evicts policy.
 
     This is NOT tautological. It derives eviction from:
-    - bounded capacity (Landauer)
+    - bounded capacity (capacity_bound)
     - unequal arrival rates (empirical)
     - first-in eviction under pressure
 

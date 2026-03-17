@@ -7,14 +7,14 @@ import NaturalFramework.Contracts
 Formalizes the composition argument from
 [The Handshake](https://june.kim/the-handshake).
 
-The six roles are stochastic kernels (`α → M β`) — morphisms in the
-Kleisli category of a probability monad. Five compose forward;
+The six roles are monadic kernels (`α → M β`) — morphisms in the
+Kleisli category of a lawful monad. Five compose forward;
 Consolidate runs backward inside the substrate. This module formalizes:
 
 - The handshake property: postcondition of stage N is precondition of stage N+1
 - Cross-cycle coupling: Consolidate at k → Attend at k+1 through the policy store
 - Ordering: rearranging forward stages breaks type compatibility
-- Data processing inequality: information decreases monotonically
+- Information monotonicity: measures decrease through kernel composition
 - Four claims from contracts
 - Cross-domain functor: structure-preserving map between pipeline instances
 - Traced feedback: Remember's output feeds Perceive's input
@@ -64,9 +64,9 @@ structure PipelineHandshake (I : InterfaceTypes) where
     If Consolidate preserves its postcondition, the handshake guarantees
     Attend's policy precondition holds on the next cycle.
 
-    In the stochastic case: for all possible outputs of `cycle`,
-    the policy component satisfies the precondition. -/
-theorem cycle_preserves_policy [LawfulProbMonad M] [Monad M] [Support M]
+    For all possible outputs of `cycle`, the policy component
+    satisfies the precondition. -/
+theorem cycle_preserves_policy [Monad M] [LawfulMonad M] [Support M]
     (h : PipelineHandshake I) (p : Pipeline M I)
     (hcon : ∀ (pol : I.policy) (per : I.persisted),
       ∀ pol' : I.policy, Support.support (p.consolidate pol per) pol' →
@@ -76,7 +76,7 @@ theorem cycle_preserves_policy [LawfulProbMonad M] [Monad M] [Support M]
         Support.support (p.cycle input policy) result →
         h.consolidate_attend.pre result.1 := by
   intro result hresult
-  simp [Pipeline.cycle, Pipeline.forward] at hresult
+  simp only [Pipeline.cycle, Pipeline.forward] at hresult
   rw [Support.support_bind] at hresult
   obtain ⟨ranked, _, hr2⟩ := hresult
   rw [Support.support_bind] at hr2
@@ -91,7 +91,7 @@ theorem cycle_preserves_policy [LawfulProbMonad M] [Monad M] [Support M]
     The cycle only invokes Consolidate with the policy it received.
     Needed for up-induction on the tower (`life_at_zero` path),
     where we only know `post` for the starting policy. -/
-theorem cycle_preserves_policy_at [LawfulProbMonad M] [Monad M] [Support M]
+theorem cycle_preserves_policy_at [Monad M] [LawfulMonad M] [Support M]
     (h : PipelineHandshake I) (p : Pipeline M I)
     (policy : I.policy) (input : I.raw)
     (hcon : ∀ (per : I.persisted),
@@ -101,7 +101,7 @@ theorem cycle_preserves_policy_at [LawfulProbMonad M] [Monad M] [Support M]
         Support.support (p.cycle input policy) result →
         h.consolidate_attend.pre result.1 := by
   intro result hresult
-  simp [Pipeline.cycle, Pipeline.forward] at hresult
+  simp only [Pipeline.cycle, Pipeline.forward] at hresult
   rw [Support.support_bind] at hresult
   obtain ⟨ranked, _, hr2⟩ := hresult
   rw [Support.support_bind] at hr2
@@ -114,12 +114,12 @@ theorem cycle_preserves_policy_at [LawfulProbMonad M] [Monad M] [Support M]
 
 /-- Extract: any output policy of `cycle` came from Consolidate
     applied to the input policy. Useful for tower decomposition. -/
-theorem cycle_consolidate_support [LawfulProbMonad M] [Monad M] [Support M]
+theorem cycle_consolidate_support [Monad M] [LawfulMonad M] [Support M]
     (p : Pipeline M I) (input : I.raw) (policy : I.policy)
     (result : I.policy × I.persisted)
     (h : Support.support (p.cycle input policy) result)
     : ∃ per, Support.support (p.consolidate policy per) result.1 := by
-  simp [Pipeline.cycle, Pipeline.forward] at h
+  simp only [Pipeline.cycle, Pipeline.forward] at h
   rw [Support.support_bind] at h
   obtain ⟨ranked, _, h2⟩ := h
   rw [Support.support_bind] at h2
@@ -153,20 +153,16 @@ theorem step_position_injective : Function.Injective Step.position := by
   all_goals (simp [Fin.ext_iff] at h)
 
 -- ============================================================
--- Data Processing Inequality
+-- Information Monotonicity
 -- ============================================================
 
 /-- An information measure assigns a non-negative value to each state.
-    Abstracted as a natural number for now; real-valued with mathlib. -/
+    Abstracted as a natural number; real-valued measures need mathlib. -/
 structure InfoMeasure (α : Type) where
   /-- Mutual information between input and current state -/
   measure : α → Nat
 
-/-- The data processing inequality: for a chain X → Y → Z,
-    I(X;Z) ≤ I(X;Y). Each intermediate step can only decrease
-    what downstream knows about the original input.
-
-    A kernel is non-expanding if all possible outputs do not
+/-- A kernel is non-expanding if all possible outputs do not
     increase information. Quantifies over support. -/
 def NonExpanding [Monad M] [Support M] (f : Kernel M α β) (mα : InfoMeasure α) (mβ : InfoMeasure β) : Prop :=
   ∀ a : α, ∀ b : β, Support.support (f a) b → mβ.measure b ≤ mα.measure a
@@ -175,9 +171,8 @@ def NonExpanding [Monad M] [Support M] (f : Kernel M α β) (mα : InfoMeasure �
 def StrictlyLossy [Monad M] [Support M] (f : Kernel M α β) (mα : InfoMeasure α) (mβ : InfoMeasure β) : Prop :=
   NonExpanding f mα mβ ∧ ∃ a : α, ∃ b : β, Support.support (f a) b ∧ mβ.measure b < mα.measure a
 
-/-- Composing two non-expanding kernels yields a non-expanding kernel.
-    This is the chain rule for information loss. -/
-theorem non_expanding_compose [LawfulProbMonad M] [Monad M] [Support M]
+/-- Composing two non-expanding kernels yields a non-expanding kernel. -/
+theorem non_expanding_compose [Monad M] [LawfulMonad M] [Support M]
     {f : Kernel M α β} {g : Kernel M β γ}
     {mα : InfoMeasure α} {mβ : InfoMeasure β} {mγ : InfoMeasure γ}
     (hf : NonExpanding f mα mβ)
@@ -396,7 +391,7 @@ structure TracedPipeline (M : Type → Type) [Monad M] (I : InterfaceTypes) exte
 
 /-- A traced pipeline can run autonomously given an initial input
     and policy. Each cycle feeds Remember's output back to Perceive. -/
-def TracedPipeline.run [LawfulProbMonad M] (tp : TracedPipeline M I) (initial : I.raw)
+def TracedPipeline.run [Monad M] [LawfulMonad M] (tp : TracedPipeline M I) (initial : I.raw)
     (policy₀ : I.policy) (n : Nat) : M I.policy :=
   match n with
   | 0 => pure policy₀

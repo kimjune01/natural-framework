@@ -13,14 +13,14 @@ argument bridges from "bad outcome without X" to "X must exist."
 
 ## Boundary 1: Encoding before selection
 
-The environment has higher dimensionality than internal state (Landauer).
+The environment has higher dimensionality than internal state (capacity_bound).
 A surjection (Perceive) must bridge them. Inputs arrive faster than
 outputs drain (rate mismatch axiom). A buffer (Cache) must exist
 or items are lost.
 
 ## Boundary 2: Selection before persistence
 
-Bounded storage (Landauer) forces selection before persistence.
+Bounded storage (capacity_bound) forces selection before persistence.
 Without gating, the store fills and the system halts.
 -/
 
@@ -29,13 +29,13 @@ Without gating, the store fills and the system halts.
 -- ============================================================
 
 /-- The environment is strictly larger than internal state.
-    Landauer bounds internal state to N ≤ energy.
+    capacity_bound bounds internal state to N ≤ energy.
     The environment has more distinguishable configurations than
     the system can represent. A surjection (lossy map) is forced.
 
-    Derived from: Landauer axiom.
+    Derived from: capacity_bound axiom.
     Falsifiable: if internal state can be as large as environment,
-    no lossy encoding needed. Landauer prevents this. -/
+    no lossy encoding needed. capacity_bound prevents this. -/
 theorem perceive_forced (energy env_dim : Nat)
     (henv : env_dim > energy)
     : ∀ N : Nat, N ≤ energy → env_dim > N := by
@@ -80,7 +80,7 @@ theorem cache_from_rate_mismatch :
     Once full, the system must either drop new items (implicit selection)
     or halt. Explicit selection (Filter) prevents the halt.
 
-    Derived from: Landauer (finite capacity).
+    Derived from: capacity_bound (finite capacity).
     Falsifiable: infinite capacity → no pressure to select. -/
 theorem no_filter_fills_store
     (capacity items_per_cycle : Nat)

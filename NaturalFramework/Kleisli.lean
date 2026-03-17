@@ -1,26 +1,26 @@
-import NaturalFramework.ProbabilityMonad
+import NaturalFramework.Support
 
 /-!
-# Stoch: the Kleisli Category of the Probability Monad
+# Kleisli Category
 
-Morphisms in Stoch are stochastic kernels: `α → M β`.
+Morphisms are monadic kernels: `α → M β`.
 When `M = Id`, these are ordinary functions.
 
 ## Main definitions
 
-- `Kernel` — the type of stochastic kernels
+- `Kernel` — the morphism type (Kleisli arrows)
 - `Kernel.id` — identity kernel (`pure`)
 - `Kernel.comp` — Kleisli composition (`>=>`)
 - `Kernel.deterministic` — embedding of pure functions into kernels
 - Category laws derived from monad laws
-- `deterministic_comp` — embedding preserves composition (Set → Stoch functor)
+- `deterministic_comp` — embedding preserves composition
 -/
 
 -- ============================================================
--- Kernel: the morphism type of Stoch
+-- Kernel: the morphism type
 -- ============================================================
 
-/-- A stochastic kernel from `α` to `β` in monad `M`.
+/-- A monadic kernel from `α` to `β` in monad `M`.
     When `M = Id`, this is `α → β`. -/
 def Kernel (M : Type → Type) (α β : Type) := α → M β
 
@@ -44,33 +44,33 @@ def Kernel.deterministic [Monad M] (f : α → β) : Kernel M α β :=
 -- ============================================================
 
 /-- Left identity: `id >=> f = f`. -/
-theorem Kernel.id_comp [LawfulProbMonad M] (f : Kernel M α β)
+theorem Kernel.id_comp [Monad M] [LawfulMonad M] (f : Kernel M α β)
     : Kernel.comp Kernel.id f = f := by
   funext a
-  simp [Kernel.comp, Kernel.id, LawfulProbMonad.pure_bind]
+  simp [Kernel.comp, Kernel.id]
 
 /-- Right identity: `f >=> id = f`. -/
-theorem Kernel.comp_id [LawfulProbMonad M] (f : Kernel M α β)
+theorem Kernel.comp_id [Monad M] [LawfulMonad M] (f : Kernel M α β)
     : Kernel.comp f Kernel.id = f := by
   funext a
   show f a >>= (fun b => pure b) = f a
-  exact LawfulProbMonad.bind_pure (f a)
+  exact bind_pure (f a)
 
 /-- Associativity: `(f >=> g) >=> h = f >=> (g >=> h)`. -/
-theorem Kernel.comp_assoc [LawfulProbMonad M] (f : Kernel M α β)
+theorem Kernel.comp_assoc [Monad M] [LawfulMonad M] (f : Kernel M α β)
     (g : Kernel M β γ) (h : Kernel M γ δ)
     : Kernel.comp (Kernel.comp f g) h = Kernel.comp f (Kernel.comp g h) := by
   funext a
   show (f a >>= g) >>= h = f a >>= (fun x => g x >>= h)
-  exact LawfulProbMonad.bind_assoc (f a) g h
+  exact bind_assoc (f a) g h
 
 -- ============================================================
 -- Deterministic embedding preserves composition
 -- ============================================================
 
-/-- The embedding `Set → Stoch` is a functor: it preserves composition.
+/-- Embedding pure functions into kernels preserves composition.
     `deterministic (g ∘ f) = deterministic f >=> deterministic g`. -/
-theorem Kernel.deterministic_comp [LawfulProbMonad M] (f : α → β) (g : β → γ)
+theorem Kernel.deterministic_comp [Monad M] [LawfulMonad M] (f : α → β) (g : β → γ)
     : Kernel.deterministic (M := M) (g ∘ f) = Kernel.comp (Kernel.deterministic f) (Kernel.deterministic g) := by
   funext a
-  simp [Kernel.deterministic, Kernel.comp, LawfulProbMonad.pure_bind]
+  simp [Kernel.deterministic, Kernel.comp]

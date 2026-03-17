@@ -12,7 +12,7 @@ the same `I` at every depth. No dependent types needed.
 
 ## Termination
 
-The data processing inequality guarantees each inner pipeline has
+Information monotonicity guarantees each inner pipeline has
 strictly fewer bits. Filter is strictly lossy (StrictlyLossy in
 Handshake.lean). At zero bits, selection is impossible — passthrough.
 Tower height ≤ initial bit budget.
@@ -21,7 +21,7 @@ Tower height ≤ initial bit budget.
 
 | Depth | Consolidate                              |
 |-------|------------------------------------------|
-| 0     | Passthrough (DPI floor, can't select)    |
+| 0     | Passthrough (budget floor, can't select)    |
 | d+1   | Inner pipeline cycle using depth-d tower |
 
 ## Two directions of induction
@@ -42,18 +42,18 @@ Both paths converge: the tower preserves at every depth.
 -/
 
 -- ============================================================
--- Passthrough: the DPI floor
+-- Passthrough: the budget floor
 -- ============================================================
 
 /-- At zero bits, Consolidate cannot select: passthrough.
-    The data processing inequality guarantees this floor exists:
+    Information monotonicity guarantees this floor exists:
     Filter is strictly lossy, so each level has fewer bits.
     Returns `pure pol` — deterministic identity wrapped in `M`. -/
 def passthrough [Monad M] (pol : α) (_ : β) : M α := pure pol
 
 /-- Passthrough preserves any contract: output = input.
     The only value in the support of `pure pol` is `pol`. -/
-theorem passthrough_preserves [LawfulProbMonad M] [Support M]
+theorem passthrough_preserves [Monad M] [LawfulMonad M] [Support M]
     (c : Contract α) (pol : α) (per : β)
     (hpol : c pol) : ∀ x : α, Support.support (passthrough (M := M) pol per) x → c x := by
   intro x hx
@@ -63,7 +63,7 @@ theorem passthrough_preserves [LawfulProbMonad M] [Support M]
   exact hpol
 
 -- ============================================================
--- DPI termination
+-- Budget termination
 -- ============================================================
 
 /-- Bit budget at depth d, starting from initial bits.
@@ -91,13 +91,13 @@ theorem budget_strictly_decreases (initial d : Nat) (hd : d < initial) :
 -- ============================================================
 
 /-- The recursive consolidation kernel.
-    At depth 0: passthrough (DPI floor).
+    At depth 0: passthrough (budget floor).
     At depth d+1: encode (policy, persisted) as raw input,
     run inner pipeline's forward pass, remember, then apply
     inner consolidation (at depth d) to the result.
 
-    Returns `M I.policy` — a stochastic kernel. -/
-def tower_consolidate [LawfulProbMonad M]
+    Returns `M I.policy` — a monadic kernel. -/
+def tower_consolidate [Monad M] [LawfulMonad M]
     {I : InterfaceTypes}
     (base : Pipeline M I)
     (encode : I.policy → I.persisted → I.raw)
@@ -111,7 +111,7 @@ def tower_consolidate [LawfulProbMonad M]
 
 /-- The pipeline at each depth of the tower.
     Shared forward stages from `base`. Consolidation varies by depth. -/
-def tower_pipeline [LawfulProbMonad M]
+def tower_pipeline [Monad M] [LawfulMonad M]
     {I : InterfaceTypes}
     (base : Pipeline M I)
     (encode : I.policy → I.persisted → I.raw)
@@ -131,8 +131,8 @@ def tower_pipeline [LawfulProbMonad M]
     with the same policy it received — so the IH applies.
 
     This is the constructive path: observe life, build the mechanism
-    step by step from the DPI floor. -/
-theorem tower_preserves_up [LawfulProbMonad M] [Support M]
+    step by step from the budget floor. -/
+theorem tower_preserves_up [Monad M] [LawfulMonad M] [Support M]
     {I : InterfaceTypes}
     (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)
@@ -183,7 +183,7 @@ theorem tower_preserves_up [LawfulProbMonad M] [Support M]
     This is the teleological path: purpose guarantees the mechanism.
     The up direction needs induction; the down direction needs only
     the premise. Purpose makes the mechanism transparent. -/
-theorem tower_preserves_down [LawfulProbMonad M] [Support M]
+theorem tower_preserves_down [Monad M] [LawfulMonad M] [Support M]
     {I : InterfaceTypes}
     (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)
@@ -210,7 +210,7 @@ theorem tower_preserves_down [LawfulProbMonad M] [Support M]
 
     The disjunction mirrors `axiom foundation : life_at_zero ∨ god_is_real`
     from Induction.lean. Both paths converge on the same conclusion. -/
-theorem tower_satisfies_hcon [LawfulProbMonad M] [Support M]
+theorem tower_satisfies_hcon [Monad M] [LawfulMonad M] [Support M]
     {I : InterfaceTypes}
     (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)

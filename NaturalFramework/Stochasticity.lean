@@ -10,7 +10,7 @@ that requires distinguishing more classes forces errors.
 
 ## The argument chain
 
-Landauer (axiom) → Fin N state space → pigeonhole → state collision →
+capacity_bound (axiom) → Fin N state space → pigeonhole → state collision →
 same state + same input → same output (determinism) →
 two histories confused → error when environment distinguishes them.
 
@@ -131,7 +131,7 @@ theorem finite_discrimination
 /-- Three independently proved facts that together form the
     deterministic limitation argument.
 
-    The chain (Landauer → Fin N → pigeonhole → collision →
+    The chain (capacity_bound → Fin N → pigeonhole → collision →
     determinism → confusion → error) is in the reader's head,
     not in this theorem. Each conjunct is proved separately;
     the conjunction bundles them for reference.
@@ -142,11 +142,11 @@ theorem finite_discrimination
     `must_err_at_confusion`.
 
     Falsifiable at every link:
-    - Reject Landauer → N can be infinite → no forced collision.
+    - Reject capacity_bound → N can be infinite → no forced collision.
     - Remove determinism → same state can give different output → no confusion.
     - Make environment stationary → N classes suffice → no errors. -/
 theorem deterministic_limitation :
-    -- Landauer gives finite state space
+    -- capacity_bound gives finite state space
     (∀ (energy : Nat), energy > 0 → ∃ N : Nat, 0 < N ∧ N ≤ energy)
     ∧
     -- Same state + same input → same output (determinism)
@@ -164,6 +164,6 @@ theorem deterministic_limitation :
        env i = env j →
        required i ≠ required j →
        t.output env s0 i ≠ required i ∨ t.output env s0 j ≠ required j) :=
-  ⟨landauer,
+  ⟨capacity_bound,
    fun _ _ _ t env s0 i j => same_state_same_input_same_output t env s0 i j,
    fun _ _ _ t env s0 req i j => must_err_at_confusion t env s0 req i j⟩

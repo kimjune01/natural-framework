@@ -7,7 +7,7 @@ The falsifiability test for the Natural Framework.
 
 ## Precondition
 
-The framework applies when env_dim > internal capacity (Landauer).
+The framework applies when env_dim > internal capacity (capacity_bound).
 
 ## Structure
 
@@ -43,14 +43,14 @@ derives every conclusion from the declared axioms. No assumed witnesses.
 
 | Post | Axiom used               | Reject axiom →                |
 |------|--------------------------|-------------------------------|
-| P1   | dissipation              | lossless → closed loop lives  |
+| P1   | positive_loss            | lossless → closed loop lives  |
 | C1   | rate_mismatch            | input ≤ drain → no loss       |
-| C2   | landauer + rate_mismatch | infinite cache → never fills  |
-| F1   | landauer + rate_mismatch | infinite store → never fills  |
+| C2   | capacity_bound + rate_mismatch | infinite cache → never fills  |
+| F1   | capacity_bound + rate_mismatch | infinite store → never fills  |
 | A1   | history_matters          | memoryless tasks → no policy  |
 | A2   | Bool (2 values)          | infinite classes → no pigeon  |
-| A3   | landauer + pigeonhole    | infinite states → no collision|
-| Co1  | landauer + pigeonhole    | infinite states → no collision|
+| A3   | capacity_bound + pigeonhole    | infinite states → no collision|
+| Co1  | capacity_bound + pigeonhole    | infinite states → no collision|
 | R1   | history_matters          | memoryless tasks → no persist |
 -/
 
@@ -249,7 +249,7 @@ theorem no_remember_death
 /-- All postcondition removals assembled. Eight of ten conjuncts
     derive their conclusions from declared axioms with no assumed
     witnesses. A3 and Co1 are the exceptions: they take a state
-    collision as hypothesis. The collision is guaranteed by Landauer
+    collision as hypothesis. The collision is guaranteed by capacity_bound
     (finite states) + pigeonhole (Pigeonhole.lean), but the removal
     test is about what happens GIVEN a collision, not about producing
     one.
@@ -259,19 +259,19 @@ theorem no_remember_death
     (has state, reads it, but resets each cycle). Different models,
     different failure modes, same axiom (history_matters). -/
 theorem removal_tests :
-    -- P1: dissipation → closed loop dies
+    -- P1: positive_loss → closed loop dies
     (∃ loss : Nat, loss > 0 ∧ ¬ survives 0 loss)
     ∧
     -- C1: rate_mismatch → cumulative loss
     (∃ (ir dr : Nat), ir > dr ∧ dr > 0 ∧
       ∀ k : Nat, k > 0 → k * (ir - dr) ≥ k)
     ∧
-    -- C2: landauer + rate_mismatch → cache overflows
+    -- C2: capacity_bound + rate_mismatch → cache overflows
     (∀ energy : Nat, energy > 0 →
       ∃ (cap rate : Nat), cap > 0 ∧ rate > 0 ∧
         ∃ t : Nat, t * rate ≥ cap)
     ∧
-    -- F1: landauer + rate_mismatch → downstream store overflows
+    -- F1: capacity_bound + rate_mismatch → downstream store overflows
     (∀ energy : Nat, energy > 0 →
       ∃ (cap rate : Nat), cap > 0 ∧ rate > 0 ∧
         ∃ t : Nat, t * rate ≥ cap)
@@ -307,26 +307,26 @@ theorem removal_tests :
       ∀ (N : Nat) (t : BoundedTransducer N Nat Nat) (s0 : Fin N),
         ∃ k : Nat, (t.step s0 (env k)).2 ≠ req k)
     ∧
-    -- TS: landauer + rate_mismatch → shared pool kills policy
+    -- TS: capacity_bound + rate_mismatch → shared pool kills policy
     (∀ energy : Nat, energy > 0 →
       ∃ (cap dr ps : Nat), ps > 0 ∧ ps ≤ cap ∧
         dr > cap - ps ∧
         ps * (dr + ps - cap) ≥ ps) := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · -- P1 from dissipation
-    obtain ⟨loss, hloss⟩ := dissipation
+  · -- P1 from positive_loss
+    obtain ⟨loss, hloss⟩ := positive_loss
     exact ⟨loss, hloss, no_perceive_death loss⟩
   · -- C1 from rate_mismatch
     obtain ⟨ir, dr, hmm, hdr⟩ := rate_mismatch
     exact ⟨ir, dr, hmm, hdr, no_cache_death ir dr hmm⟩
-  · -- C2 from landauer + rate_mismatch
+  · -- C2 from capacity_bound + rate_mismatch
     intro energy he
-    obtain ⟨N, hN, _⟩ := landauer energy he
+    obtain ⟨N, hN, _⟩ := capacity_bound energy he
     obtain ⟨ir, _, _, _⟩ := rate_mismatch
     exact ⟨N, ir, hN, by omega, cache_must_evict N ir (by omega)⟩
-  · -- F1 from landauer + rate_mismatch
+  · -- F1 from capacity_bound + rate_mismatch
     intro energy he
-    obtain ⟨N, hN, _⟩ := landauer energy he
+    obtain ⟨N, hN, _⟩ := capacity_bound energy he
     obtain ⟨ir, _, _, _⟩ := rate_mismatch
     exact ⟨N, ir, hN, by omega, no_filter_overflow N ir (by omega)⟩
   · -- A1 from history_matters
@@ -337,7 +337,7 @@ theorem removal_tests :
   · -- A2: inherent from Bool (2 values) + Fin 3 (3 items)
     exact fun _ _ gate treat items req hdist =>
       attend_must_rank gate treat items req hdist
-  · -- A3: collision assumed (Landauer + pigeonhole → collision)
+  · -- A3: collision assumed (capacity_bound + pigeonhole → collision)
     exact fun _ _ _ t env s0 req i j hs hi hd =>
       attend_must_be_stochastic t env s0 req i j hs hi hd
   · -- Co1: collision assumed (same gap as A3)
@@ -348,9 +348,9 @@ theorem removal_tests :
     refine ⟨env, req, fun N t s0 => ?_⟩
     have := no_remember_death t s0 env req t₁ t₂ hsame hdiff
     exact this.elim (fun h => ⟨t₁, h⟩) (fun h => ⟨t₂, h⟩)
-  · -- TS from landauer + rate_mismatch
+  · -- TS from capacity_bound + rate_mismatch
     intro energy he
-    obtain ⟨N, hN, _⟩ := landauer energy he
+    obtain ⟨N, hN, _⟩ := capacity_bound energy he
     obtain ⟨ir, _, hmm, _⟩ := rate_mismatch
     -- cap = N, policy_slots = N (all capacity is policy), data_rate = ir
     -- free space = N - N = 0, so ir > 0 suffices

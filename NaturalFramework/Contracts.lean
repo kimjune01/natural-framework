@@ -89,7 +89,7 @@ structure RememberContract (M : Type → Type) [Monad M] [Support M] (α : Type)
 
     This is stronger than requiring both contracts: the composite
     preserves `cg` regardless of whether `f` preserves any contract. -/
-theorem contract_composition_base [LawfulProbMonad M] [Support M]
+theorem contract_composition_base [Monad M] [LawfulMonad M] [Support M]
     {f : Kernel M α β} {g : Kernel M β γ}
     {cg : Contract γ}
     (hg : ContractPreserving g cg)

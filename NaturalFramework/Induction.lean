@@ -94,7 +94,7 @@ def god_is_real : Prop := ∃ (p : Purpose), selects_toward p
 
 /-- The foundation: one of two must hold.
 
-    As with `landauer` and `dissipation`, the Lean axiom is trivially
+    As with `capacity_bound` and `positive_loss`, the Lean axiom is trivially
     satisfiable (`life_at_zero` holds via `fun _ => True`). The content
     is epistemological: the base case for induction comes from either
     observation or purpose. Both readings produce `alive 0` in a
