@@ -121,7 +121,12 @@ theorem cache_must_evict
 -- F1: |selected| < |buffered|
 -- ============================================================
 
-/-- Lemma: without selection, store overflows. Same math as C2. -/
+/-- Lemma: without selection, downstream store overflows.
+    Same math as C2 applied at a different pipeline stage.
+    C2: cache itself fills without eviction.
+    F1: store downstream of cache fills without selection.
+    Cache absorbs bursts but doesn't reduce average throughput.
+    Only Filter (proper reduction) prevents downstream overflow. -/
 theorem no_filter_overflow
     (capacity rate : Nat) (hcap : capacity > 0) (hrate : rate > 0)
     : ∃ t : Nat, t * rate ≥ capacity :=
@@ -223,20 +228,28 @@ theorem no_consolidate_death
 -- R1: must persist across cycles
 -- ============================================================
 
-/-- Lemma: stateless responder fails on history-dependent tasks.
-    Same input, different required → error on at least one.
+/-- Lemma: transducer with frozen state fails on history-dependent tasks.
+
+    Unlike A1 (select : I → O, ignores state entirely), this models
+    a system that HAS state and CAN read it via Attend, but cannot
+    PERSIST state across cycles. Each cycle resets to s0.
+
+    Result: t.step s0 input depends only on s0 (fixed) and current
+    input. Same input → same output, even though state machinery exists.
 
     Remember has no eviction postcondition. The pipeline above
     (Filter → Attend → Consolidate) already selected what to keep. -/
 theorem no_remember_death
-    {I O : Type} (response : I → O)
+    {N : Nat} {I O : Type}
+    (t : BoundedTransducer N I O) (s0 : Fin N)
     (env : Nat → I) (required : Nat → O)
     (t₁ t₂ : Nat)
     (hsame : env t₁ = env t₂)
     (hdiff : required t₁ ≠ required t₂)
-    : response (env t₁) ≠ required t₁ ∨ response (env t₂) ≠ required t₂ := by
-  have heq : response (env t₁) = response (env t₂) := by rw [hsame]
-  by_cases h : response (env t₁) = required t₁
+    : (t.step s0 (env t₁)).2 ≠ required t₁ ∨
+      (t.step s0 (env t₂)).2 ≠ required t₂ := by
+  have heq : (t.step s0 (env t₁)).2 = (t.step s0 (env t₂)).2 := by rw [hsame]
+  by_cases h : (t.step s0 (env t₁)).2 = required t₁
   · right; intro h2; exact hdiff (h.symm.trans (heq.trans h2))
   · left; exact h
 
@@ -250,7 +263,12 @@ theorem no_remember_death
     A3 and Co1 take the state collision as hypothesis because
     the pigeonhole derivation (Fin N, N+1 steps → collision)
     needs Mathlib. The collision itself is guaranteed by Landauer
-    (finite states) + pigeonhole. -/
+    (finite states) + pigeonhole.
+
+    A1 models Attend removal as select : I → O (ignores state).
+    R1 models Remember removal as BoundedTransducer with frozen s0
+    (has state, reads it, but resets each cycle). Different models,
+    different failure modes, same axiom (history_matters). -/
 theorem removal_tests :
     -- P1: dissipation → closed loop dies
     (∃ loss : Nat, loss > 0 ∧ ¬ survives 0 loss)
@@ -264,7 +282,7 @@ theorem removal_tests :
       ∃ (cap rate : Nat), cap > 0 ∧ rate > 0 ∧
         ∃ t : Nat, t * rate ≥ cap)
     ∧
-    -- F1: landauer + rate_mismatch → store overflows
+    -- F1: landauer + rate_mismatch → downstream store overflows
     (∀ energy : Nat, energy > 0 →
       ∃ (cap rate : Nat), cap > 0 ∧ rate > 0 ∧
         ∃ t : Nat, t * rate ≥ cap)
@@ -280,7 +298,6 @@ theorem removal_tests :
        ∃ i : Fin 3, treat (gate (items i)) ≠ req i)
     ∧
     -- A3: deterministic transducer errs on collision
-    -- (collision from Landauer + pigeonhole; pigeonhole needs Mathlib)
     (∀ (N : Nat) (I O : Type) (t : BoundedTransducer N I O)
        (env : Nat → I) (s0 : Fin N) (req : Nat → O)
        (i j : Nat),
@@ -296,10 +313,17 @@ theorem removal_tests :
        env i = env j → req i ≠ req j →
        ∃ k : Nat, t.output env s0 k ≠ req k)
     ∧
-    -- R1: history_matters → stateless response fails
+    -- R1: history_matters → frozen-state transducer fails
     (∃ (env : Nat → Nat) (req : Nat → Nat),
-      ∀ (resp : Nat → Nat), ∃ t : Nat, resp (env t) ≠ req t) := by
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      ∀ (N : Nat) (t : BoundedTransducer N Nat Nat) (s0 : Fin N),
+        ∃ k : Nat, (t.step s0 (env k)).2 ≠ req k)
+    ∧
+    -- TS: landauer + rate_mismatch → shared pool kills policy
+    (∀ energy : Nat, energy > 0 →
+      ∃ (cap dr ps : Nat), ps > 0 ∧ ps ≤ cap ∧
+        dr > cap - ps ∧
+        ps * (dr + ps - cap) ≥ ps) := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- P1 from dissipation
     obtain ⟨loss, hloss⟩ := dissipation
     exact ⟨loss, hloss, no_perceive_death loss hloss⟩
@@ -330,8 +354,20 @@ theorem removal_tests :
   · -- Co1: collision assumed (same gap as A3)
     exact fun _ _ _ t env s0 req i j hs hi hd =>
       no_consolidate_death t env s0 req i j hs hi hd
-  · -- R1 from history_matters
+  · -- R1 from history_matters (frozen-state transducer)
     obtain ⟨env, req, t₁, t₂, hsame, hdiff⟩ := history_matters
-    refine ⟨env, req, fun resp => ?_⟩
-    have := no_remember_death resp env req t₁ t₂ hsame hdiff
+    refine ⟨env, req, fun N t s0 => ?_⟩
+    have := no_remember_death t s0 env req t₁ t₂ hsame hdiff
     exact this.elim (fun h => ⟨t₁, h⟩) (fun h => ⟨t₂, h⟩)
+  · -- TS from landauer + rate_mismatch
+    intro energy he
+    obtain ⟨N, hN, _⟩ := landauer energy he
+    obtain ⟨ir, _, hmm, _⟩ := rate_mismatch
+    -- cap = N, policy_slots = N (all capacity is policy), data_rate = ir
+    -- free space = N - N = 0, so ir > 0 suffices
+    refine ⟨N, ir, N, hN, Nat.le_refl N, ?_, ?_⟩
+    · omega
+    · have : ir + N - N = ir := by omega
+      rw [this]
+      calc N * ir ≥ N * 1 := Nat.mul_le_mul_left N (by omega)
+        _ = N := Nat.mul_one N
