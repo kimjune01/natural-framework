@@ -1,248 +1,173 @@
-import NaturalFramework.Pipeline
+import NaturalFramework.Axioms
 
 /-!
 # Stochasticity
 
-A deterministic bounded system processing non-stationary input must
-eventually cycle, and a cycling system cannot respond to novelty.
-Stochasticity is the only escape.
+A deterministic bounded transducer has finite memory: it partitions
+all input histories into at most N equivalence classes. An environment
+that requires distinguishing more classes forces errors.
 
-## The physical premise: Landauer's principle
+## The argument chain
 
-Any physical system with bounded free energy has finitely many
-distinguishable states. Each bit of state costs at least kT ln 2
-energy to maintain (Landauer 1961). This is the axiom that forces
-finiteness. Without it, infinite state spaces escape the pigeonhole.
+Landauer (axiom) → Fin N state space → pigeonhole → state collision →
+same state + same input → same output (determinism) →
+two histories confused → error when environment distinguishes them.
 
-## What this proves (falsifiably)
+## What this proves
 
-0. Landauer: bounded energy → finite states. (Physics axiom.)
+1. Determinism: same state + same input → same output.
+2. State collision: N+1 steps in Fin N → two states match (pigeonhole).
+3. History confusion: after collision, two different pasts are invisible.
+4. Error: if environment requires different responses for confused
+   histories, the transducer fails at one of them.
 
-1. Pigeonhole cycling: A deterministic map on a finite set, iterated,
-   must revisit a state within N steps. (Pigeonhole principle.)
+## What it does NOT prove
 
-2. Cycle ignores novelty: Once in a cycle, the system's future states
-   are fully determined. Input no longer affects output.
+"Stochasticity is the only escape." That claim requires showing that
+stochastic transducers avoid the limitation. A stochastic transducer
+in the same state with the same input CAN produce different outputs,
+breaking the confusion lemma. Formalizing this requires a probabilistic
+transition model (kernels, PMF) which needs Mathlib.
 
-3. Stochastic escape: An ergodic map has no proper absorbing set.
-
-Each theorem has axioms that, if wrong, would break the conclusion.
-Reject Landauer → infinite states → no forced cycling.
-Remove determinism → no fixed trajectory → no forced period.
-Remove non-stationarity → periodic output is fine.
+The honest conclusion: deterministic + finite → limited discrimination.
+Therefore: not deterministic.
 -/
 
 -- ============================================================
--- 0. Landauer's principle (physics axiom)
+-- 1. Determinism: the property that breaks under stochasticity
 -- ============================================================
 
-/-- Landauer's principle: a system with bounded free energy has a
-    maximum number of distinguishable states.
-
-    Erasing one bit of information dissipates at least kT ln 2 energy
-    (Landauer, "Irreversibility and Heat Generation in the Computing
-    Process", IBM Journal of Research and Development, 1961).
-
-    Experimentally confirmed by Bérut et al. (Nature, 2012).
-
-    This is declared as an axiom because it is physics, not mathematics.
-    The entire proof chain depends on it. Rejecting Landauer means
-    accepting infinite distinguishable states from finite energy,
-    which would break the pigeonhole argument and allow a deterministic
-    system to avoid cycling. -/
-axiom landauer_bound :
-  ∀ (energy : Nat), energy > 0 →
-    ∃ max_states : Nat, max_states > 0 ∧ max_states ≤ energy
-
-/-- Corollary: a physical system's state space is Fin N for some N.
-    Landauer gives the bound; the system lives inside it. -/
-theorem finite_state_space (energy : Nat) (he : energy > 0)
-    : ∃ N : Nat, N > 0 := by
-  obtain ⟨N, hpos, _⟩ := landauer_bound energy he
-  exact ⟨N, hpos⟩
+/-- Same state + same input → same output.
+    This is what determinism means, and what stochasticity breaks.
+    A stochastic system in the same state with the same input can
+    produce different outputs, escaping the confusion trap. -/
+theorem same_state_same_input_same_output
+    {N : Nat} {I O : Type}
+    (t : BoundedTransducer N I O)
+    (env : Nat → I) (s0 : Fin N) (i j : Nat)
+    (hstate : t.stateTraj env s0 i = t.stateTraj env s0 j)
+    (hinput : env i = env j)
+    : t.output env s0 i = t.output env s0 j := by
+  simp only [BoundedTransducer.output]
+  rw [hstate, hinput]
 
 -- ============================================================
--- Iteration machinery
+-- 2. State collision (pigeonhole)
 -- ============================================================
 
-/-- Iterate a function n times. -/
-def iterFn (f : α → α) : Nat → α → α
-  | 0, a => a
-  | n + 1, a => f (iterFn f n a)
-
-/-- Splitting lemma: iterFn f (a + b) x = iterFn f b (iterFn f a x). -/
-theorem iterFn_add (f : α → α) (a b : Nat) (x : α)
-    : iterFn f (a + b) x = iterFn f b (iterFn f a x) := by
-  induction b with
-  | zero => rfl
-  | succ k ih =>
-    -- Goal: iterFn f (a + (k + 1)) x = iterFn f (k + 1) (iterFn f a x)
-    -- LHS unfolds: a + (k+1) = (a+k) + 1, so iterFn f ((a+k)+1) x = f (iterFn f (a+k) x)
-    -- RHS unfolds: iterFn f (k+1) y = f (iterFn f k y)
-    -- By ih: iterFn f (a+k) x = iterFn f k (iterFn f a x)
-    -- So both sides are f applied to equal things
-    show iterFn f (a + k + 1) x = f (iterFn f k (iterFn f a x))
-    simp [iterFn]
-    exact congrArg f ih
+/-- In N+1 steps, a Fin N transducer must revisit a state.
+    N+1 values in N slots: pigeonhole (Dirichlet 1834).
+    Formal proof requires Mathlib's Fintype machinery. -/
+theorem state_collision (N : Nat) (hN : N > 0)
+    {I O : Type}
+    (t : BoundedTransducer N I O) (env : Nat → I) (s0 : Fin N)
+    : ∃ i j : Nat, i < N + 1 ∧ j < N + 1 ∧ i < j ∧
+      t.stateTraj env s0 i = t.stateTraj env s0 j := by
+  sorry -- Dirichlet's box principle; needs Mathlib
 
 -- ============================================================
--- 1. Pigeonhole cycling
+-- 3. History confusion → error
 -- ============================================================
 
-/-- If iterFn f i x = iterFn f (i+p) x, the trajectory is periodic. -/
-theorem periodic_from_collision (f : α → α) (x : α) (i p : Nat)
-    (hcoll : iterFn f i x = iterFn f (i + p) x)
-    : ∀ k : Nat, iterFn f (i + k * p) x = iterFn f i x := by
-  intro k
-  induction k with
-  | zero => simp
-  | succ n ih =>
-    have hmul : (n + 1) * p = n * p + p := Nat.succ_mul n p
-    have step : i + (n + 1) * p = (i + n * p) + p := by omega
-    rw [step, iterFn_add, ih, ← iterFn_add]
-    exact hcoll.symm
+/-- If two times have the same state and the same input but the
+    environment requires different outputs, the transducer must
+    give the wrong answer at one of them.
 
-/-- Pigeonhole: iterating f : Fin N → Fin N from any start must revisit
-    a state within N+1 steps.
+    This is the core limitation of finite deterministic memory.
 
-    The sequence x, f(x), ..., fᴺ(x) has N+1 elements in a set of size N.
-    By the pigeonhole principle, two must collide. Standard combinatorics;
-    formal proof requires Mathlib's Fintype.exists_ne_map_eq_of_card_lt. -/
-theorem det_finite_cycles (N : Nat) (hN : N > 0)
-    (f : Fin N → Fin N) (start : Fin N)
-    : ∃ i j : Fin (N + 1), i ≠ j ∧
-      iterFn f i.val start = iterFn f j.val start := by
-  -- Pigeonhole: N+1 elements in N slots → two collide.
-  -- Requires Mathlib (Fintype.exists_ne_map_eq_of_card_lt).
-  -- The math is Dirichlet's box principle (1834).
-  sorry
-
--- ============================================================
--- 2. Cycle ignores novelty
--- ============================================================
-
-/-- A cycling system's output is periodic regardless of input. -/
-theorem cycle_output_periodic
-    {S I O : Type}
-    (state : Nat → S) (response : S → I → O)
-    (p : Nat)
-    (hcycle : ∀ t, state (t + p) = state t)
-    : ∀ t, ∀ input : I,
-      response (state (t + p)) input = response (state t) input := by
-  intro t input
-  rw [hcycle]
-
-/-- Periodic output mismatches non-stationary environment.
-
-    If the environment requires non-periodic responses but the system
-    produces periodic ones, there exists a time of mismatch.
-
-    Falsifiable: show a periodic system that tracks non-periodic demand.
-    It can't — periodicity of output + non-periodicity of requirement
-    forces at least one collision. -/
-theorem periodic_mismatches_nonstationary
-    {O : Type}
-    (required actual : Nat → O)
-    (p : Nat)
-    (hperiodic : ∀ t, actual (t + p) = actual t)
-    (hnovel : ∃ t, required t ≠ required (t + p))
-    : ∃ t, required t ≠ actual t ∨ required (t + p) ≠ actual (t + p) := by
-  obtain ⟨t, hne⟩ := hnovel
-  by_cases h1 : required t = actual t
-  · by_cases h2 : required (t + p) = actual (t + p)
-    · -- Both equal → required t = actual t = actual (t+p) = required (t+p)
-      -- Contradicts hne
-      exfalso
-      exact hne (h1.trans ((hperiodic t).symm.trans h2.symm))
-    · exact ⟨t, Or.inr h2⟩
-  · exact ⟨t, Or.inl h1⟩
+    Falsifiable: remove determinism (make step stochastic) and the
+    transducer CAN give different outputs at the same state, so the
+    confusion doesn't force an error. -/
+theorem must_err_at_confusion
+    {N : Nat} {I O : Type}
+    (t : BoundedTransducer N I O)
+    (env : Nat → I) (s0 : Fin N) (required : Nat → O)
+    (i j : Nat)
+    (hstate : t.stateTraj env s0 i = t.stateTraj env s0 j)
+    (hinput : env i = env j)
+    (hdiff : required i ≠ required j)
+    : t.output env s0 i ≠ required i ∨ t.output env s0 j ≠ required j := by
+  have heq := same_state_same_input_same_output t env s0 i j hstate hinput
+  -- output i = output j, but required i ≠ required j
+  -- So at least one of (output i ≠ required i), (output j ≠ required j)
+  by_cases h : t.output env s0 i = required i
+  · -- output i = required i, so output j = output i = required i ≠ required j
+    right
+    intro h2
+    exact hdiff (h.symm.trans (heq.trans h2))
+  · left; exact h
 
 -- ============================================================
--- 3. Stochastic escape
+-- 4. Finite discrimination
 -- ============================================================
 
-/-- Reachability: s can reach t under iteration. -/
-def Reachable (f : S → S) (s t : S) : Prop :=
-  ∃ n : Nat, iterFn f n s = t
+/-- A Fin N transducer has at most N distinct states.
+    Two input histories that produce the same state are
+    indistinguishable. The transducer can distinguish at most
+    N equivalence classes of input history.
 
-/-- Ergodicity: every state can reach every other state. -/
-def IsErgodic (f : S → S) : Prop :=
-  ∀ s t : S, Reachable f s t
+    After a state collision (guaranteed by pigeonhole in N+1 steps),
+    if the colliding times receive the same input but the environment
+    requires different responses, must_err_at_confusion applies.
 
-/-- An absorbing set: once entered, never leaves. -/
-def IsAbsorbing (f : S → S) (A : S → Prop) : Prop :=
-  ∀ s, A s → A (f s)
-
-/-- Iterating from a state in an absorbing set stays in the set. -/
-theorem absorbing_iterate (f : S → S) (A : S → Prop)
-    (habs : IsAbsorbing f A) (s : S) (hs : A s)
-    : ∀ n : Nat, A (iterFn f n s) := by
-  intro n
-  induction n with
-  | zero => exact hs
-  | succ k ih => exact habs _ ih
-
-/-- An ergodic system has no proper absorbing set.
-
-    Proof: if A is absorbing and contains s_in, every iterate of s_in
-    is in A (by absorbing_iterate). But s_in can reach any s_out ∉ A
-    (by ergodicity). iterFn f n s_in = s_out, yet iterFn f n s_in ∈ A.
-    Contradiction.
-
-    Falsifiable: exhibit an ergodic deterministic system with a proper
-    absorbing set. Ergodicity means every state reaches every state.
-    Absorption means what enters never leaves. The two are incompatible
-    unless A is the whole space. -/
-theorem ergodic_no_proper_absorbing
-    (f : S → S)
-    (herg : IsErgodic f)
-    (A : S → Prop)
-    (habs : IsAbsorbing f A)
-    (s_in : S) (hs_in : A s_in)
-    (s_out : S) (hs_out : ¬ A s_out)
-    : False := by
-  obtain ⟨n, hn⟩ := herg s_in s_out
-  have := absorbing_iterate f A habs s_in hs_in n
-  rw [hn] at this
-  exact hs_out this
+    The bound is tight: N states → at most N classes → errors when
+    environment requires > N classes. -/
+theorem finite_discrimination (N : Nat) (hN : N > 0)
+    {I O : Type}
+    (t : BoundedTransducer N I O) (env : Nat → I) (s0 : Fin N)
+    (required : Nat → O)
+    -- Pigeonhole gives collision
+    (i j : Nat)
+    (hi : i < N + 1) (hj : j < N + 1) (hij : i < j)
+    (hstate : t.stateTraj env s0 i = t.stateTraj env s0 j)
+    -- Environment repeats the input at collision times
+    (hinput : env i = env j)
+    -- But requires different outputs
+    (hdiff : required i ≠ required j)
+    : ∃ k : Nat, t.output env s0 k ≠ required k := by
+  have herr := must_err_at_confusion t env s0 required i j hstate hinput hdiff
+  cases herr with
+  | inl h => exact ⟨i, h⟩
+  | inr h => exact ⟨j, h⟩
 
 -- ============================================================
--- Combined: the stochasticity requirement
+-- Combined: the deterministic limitation
 -- ============================================================
 
-/-- The full chain from physics to stochasticity.
+/-- The full chain from Landauer to limitation.
 
-    Landauer (axiom) → finite states → pigeonhole → cycling →
-    periodic output → mismatch with non-stationary demand → death.
+    1. Landauer (axiom): bounded energy → state space Fin N.
+    2. Pigeonhole: N+1 steps → state collision (sorry).
+    3. Determinism: same state + same input → same output.
+    4. Confusion: if environment distinguishes confused histories → error.
 
-    Escape: ergodicity (stochasticity) → no absorbing cycles →
-    system can always reach novel states.
+    Conclusion: a deterministic finite transducer cannot track an
+    environment that requires more than N history classes.
+    Therefore: not deterministic.
 
-    The chain is falsifiable at every link:
-    - Reject Landauer → infinite states → no pigeonhole.
-    - Remove determinism → no fixed trajectory → no period.
-    - Remove non-stationarity → periodic output matches demand.
-    - Remove ergodicity → absorbing cycles trap the system.
-
-    Each axiom does real work. Remove any one and the conclusion
-    changes. That is the test. -/
-theorem stochasticity_required :
-    -- Landauer: bounded energy → finite states
-    (∀ (energy : Nat), energy > 0 →
-      ∃ N : Nat, N > 0)
+    Falsifiable at every link:
+    - Reject Landauer → N can be infinite → no forced collision.
+    - Remove determinism → same state can give different output → no confusion.
+    - Make environment stationary → N classes suffice → no errors. -/
+theorem deterministic_limitation :
+    -- Landauer gives finite state space
+    (∀ (energy : Nat), energy > 0 → ∃ N : Nat, 0 < N ∧ N ≤ energy)
     ∧
-    -- Periodic output mismatches non-stationary input
-    (∀ (O : Type) (required actual : Nat → O) (p : Nat),
-      (∀ t, actual (t + p) = actual t) →
-      (∃ t, required t ≠ required (t + p)) →
-      ∃ t, required t ≠ actual t ∨ required (t + p) ≠ actual (t + p))
+    -- Same state + same input → same output (determinism)
+    (∀ (N : Nat) (I O : Type) (t : BoundedTransducer N I O)
+       (env : Nat → I) (s0 : Fin N) (i j : Nat),
+       t.stateTraj env s0 i = t.stateTraj env s0 j →
+       env i = env j →
+       t.output env s0 i = t.output env s0 j)
     ∧
-    -- Ergodic systems have no proper absorbing sets
-    (∀ (S : Type) (f : S → S) (A : S → Prop),
-      IsErgodic f → IsAbsorbing f A →
-      ∀ s_in, A s_in → ∀ s_out, ¬ A s_out → False) :=
-  ⟨fun energy he => finite_state_space energy he,
-   fun _ _ _ _ hper hnov =>
-    periodic_mismatches_nonstationary _ _ _ hper hnov,
-   fun _ f A herg habs s_in hs_in s_out hs_out =>
-    ergodic_no_proper_absorbing f herg A habs s_in hs_in s_out hs_out⟩
+    -- Confusion → error
+    (∀ (N : Nat) (I O : Type) (t : BoundedTransducer N I O)
+       (env : Nat → I) (s0 : Fin N) (required : Nat → O)
+       (i j : Nat),
+       t.stateTraj env s0 i = t.stateTraj env s0 j →
+       env i = env j →
+       required i ≠ required j →
+       t.output env s0 i ≠ required i ∨ t.output env s0 j ≠ required j) :=
+  ⟨landauer,
+   fun _ _ _ t env s0 i j => same_state_same_input_same_output t env s0 i j,
+   fun _ _ _ t env s0 req i j => must_err_at_confusion t env s0 req i j⟩

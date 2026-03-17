@@ -1,0 +1,85 @@
+/-!
+# Physical Axioms
+
+The axioms that ground the Natural Framework. Each is empirically
+falsifiable: reject any one and the dependent theorems break.
+
+Lean tracks axiom usage. Any theorem that depends on these is marked
+by the kernel. No hidden assumptions.
+
+## The three axioms
+
+1. **Landauer**: bounded energy → bounded distinguishable states.
+2. **Rate mismatch**: input can outpace processing.
+3. **Non-stationarity**: environments change.
+-/
+
+-- ============================================================
+-- Axiom 1: Landauer's principle
+-- ============================================================
+
+/-- Landauer's principle (1961, confirmed Bérut et al. 2012):
+    A system with bounded free energy has a maximum number of
+    distinguishable states. Each bit costs at least kT ln 2 to maintain.
+
+    Encoded as: energy bounds the number of distinguishable states.
+    The bound feeds directly into the transducer's state space (Fin N).
+
+    Reject → infinite states → pigeonhole fails → no forced collision. -/
+axiom landauer (energy : Nat) (he : energy > 0) :
+  ∃ N : Nat, 0 < N ∧ N ≤ energy
+
+-- ============================================================
+-- Axiom 2: Rate mismatch
+-- ============================================================
+
+/-- Input can arrive faster than the system can process.
+    This is empirical: environments are richer than processors.
+
+    Reject → input never exceeds processing rate →
+    no buffer needed → Cache is optional. -/
+axiom rate_mismatch :
+  ∃ (input_rate drain_rate : Nat),
+    input_rate > drain_rate ∧ drain_rate > 0
+
+-- ============================================================
+-- Axiom 3: Non-stationarity
+-- ============================================================
+
+/-- Environments change. Modeled as: the required response at some
+    time t differs from what it was at time t + p for any period p.
+
+    This is a condition on specific environments, not a universal law.
+    We state it as a property that environments can have.
+
+    Reject → environment is periodic → periodic behavior suffices →
+    stochasticity is optional. -/
+def NonStationary {O : Type} (required : Nat → O) (p : Nat) : Prop :=
+  ∃ t, required t ≠ required (t + p)
+
+-- ============================================================
+-- Bounded Transducer (the unified model)
+-- ============================================================
+
+/-- A bounded deterministic transducer: finite state space Fin N,
+    processes an input stream, produces output.
+
+    State space size N is bounded by Landauer.
+    Step function is deterministic: (state, input) → (state, output).
+    This is the single formal model that all proofs reference. -/
+structure BoundedTransducer (N : Nat) (I O : Type) where
+  /-- Transition function -/
+  step : Fin N → I → Fin N × O
+
+/-- State trajectory: states visited given input stream and initial state. -/
+def BoundedTransducer.stateTraj {N : Nat} {I O : Type}
+    (t : BoundedTransducer N I O) (env : Nat → I) (s0 : Fin N)
+    : Nat → Fin N
+  | 0 => s0
+  | k + 1 => (t.step (t.stateTraj env s0 k) (env k)).1
+
+/-- Output at time k: produced when processing input k from state k. -/
+def BoundedTransducer.output {N : Nat} {I O : Type}
+    (t : BoundedTransducer N I O) (env : Nat → I) (s0 : Fin N)
+    (k : Nat) : O :=
+  (t.step (t.stateTraj env s0 k) (env k)).2

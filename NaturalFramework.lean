@@ -5,6 +5,7 @@
 -- https://june.kim/the-natural-framework
 -- https://june.kim/the-handshake
 
+import NaturalFramework.Axioms
 import NaturalFramework.Pipeline
 import NaturalFramework.Contracts
 import NaturalFramework.Boundary
