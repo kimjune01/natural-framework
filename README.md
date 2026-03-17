@@ -12,15 +12,18 @@ The six roles are monadic kernels (`α → M β`) — morphisms in the Kleisli c
 
 The Lean proofs **do** establish:
 - Given the typed pipeline vocabulary, the forward ordering is unique (`Uniqueness.lean`)
-- Removing any postcondition produces failure (`Removal.lean`)
+- Removing any postcondition produces failure — ten-conjunct falsification table (`Removal.lean`)
 - Contracts compose through monadic kernels (`Handshake.lean`)
-- Recursive consolidation preserves postconditions under both induction directions (`Fractal.lean`)
-- Deterministic finite transducers have bounded discrimination (`Stochasticity.lean` + `Pigeonhole.lean`)
+- The coupling lemma: `cycle_preserves_policy` closes the forward-backward loop (`Handshake.lean`)
+- Recursive consolidation preserves postconditions under both induction directions, with budget termination (`Fractal.lean`)
+- Each of the six interfaces is independently necessary for life to persist (`Induction.lean`)
+- Deterministic finite transducers have bounded discrimination via pigeonhole (`Stochasticity.lean` + `Pigeonhole.lean`)
 
 The Lean proofs **do not** establish:
 - That the six roles are the *only possible* decomposition — the roles are built into the type vocabulary, not derived from axioms alone
 - Probabilistic claims (entropy, conditioning, measure-theoretic DPI) — the `Support` abstraction reasons about reachability, not probability mass
 - That the system axioms encode their physical content — `capacity_bound` and `positive_loss` are trivially satisfiable over Nat (see docstrings)
+- That the four forward handshakes are load-bearing — the coupling lemma decomposes via support, making the forward handshakes redundant (design decision documented in `Handshake.lean`)
 
 ## Structure
 
@@ -28,18 +31,18 @@ The Lean proofs **do not** establish:
 |------|-------------------|
 | `Support.lean` | `Support` class (possibilistic reachability), `Id` instance |
 | `Kleisli.lean` | `Kernel` type, Kleisli composition, category laws from monad laws, deterministic embedding |
-| `Axioms.lean` | Four system axioms + one predicate definition (capacity bound, rate mismatch, non-stationarity, positive loss, history matters) + bounded transducer model |
+| `Axioms.lean` | Five system axioms (capacity bound, rate mismatch, non-stationarity, positive loss, history matters), `BoundedTransducer` model with state trajectory |
 | `Pipeline.lean` | Six roles, interface types, forward/cycle/iterate as monadic kernel composition |
 | `Contracts.lean` | Postconditions over support, contract preservation, iteration stability |
-| `Boundary.lean` | Perceive forced (capacity bound), Cache forced (rate mismatch), Filter forced (bounded storage), Remember forced (loop closure) |
+| `Boundary.lean` | Perceive forced (capacity forces lossy encoding), Cache forced (rate mismatch forces buffering), Filter forced (capacity forces selection), Remember forced (feedback requires persistence) |
 | `Corollary.lean` | Competitive core, control/data separation, read/write interfaces |
-| `DeathConditions.lean` | Three death conditions (broken step, closed loop, decaying input), survival induction |
+| `DeathConditions.lean` | Three death conditions (broken step, closed loop, decaying input), budget tracking, survival induction |
 | `Handshake.lean` | Postcondition-precondition handshake, coupling lemma, information monotonicity, diversity budget, cross-domain functor, traced feedback |
 | `Uniqueness.lean` | Forward ordering uniqueness, Consolidate excluded from forward chain |
 | `Pigeonhole.lean` | No injection Fin (n+1) → Fin n, pigeonhole collision theorem |
 | `Stochasticity.lean` | Determinism → confusion → error chain, state collision via pigeonhole |
 | `Removal.lean` | Ten-conjunct falsification table: remove any postcondition, system dies |
-| `Induction.lean` | `axiom foundation : life_at_zero ∨ god_is_real`, `life_persists`, `life_requires_all_six` |
+| `Induction.lean` | `SystemModel` structure (bundles all axioms), foundation disjunction, `life_persists`, `interface_necessary` for all six roles |
 | `Fractal.lean` | Recursive consolidation tower, budget termination, `tower_preserves_post` over support |
 
 ## What compiles
@@ -59,6 +62,7 @@ Requires [Lean 4](https://lean-lang.org/) via [elan](https://github.com/leanprov
 - [The Natural Framework](https://june.kim/the-natural-framework) — the derivation
 - [The Handshake](https://june.kim/the-handshake) — contracts and formal backbone
 - [The Parts Bin](https://june.kim/the-parts-bin) — algorithm catalog
+- [Validation Study](https://github.com/kimjune01/natural-framework-study) — preregistered retrospective empirical test
 
 ## License
 
