@@ -35,6 +35,12 @@ Pick one, derive the other. See Induction.lean.
     Encoded as: energy bounds the number of distinguishable states.
     The bound feeds directly into the transducer's state space (Fin N).
 
+    As a Lean axiom this is trivially satisfiable (pick N = 1). The
+    physical content — that kT ln 2 per bit bounds a specific system's
+    state space — lives in the interpretation, not the formalization.
+    The axiom asserts the shape (finite bound exists) that downstream
+    proofs require.
+
     Reject → infinite states → pigeonhole fails → no forced collision. -/
 axiom landauer (energy : Nat) (he : energy > 0) :
   ∃ N : Nat, 0 < N ∧ N ≤ energy
@@ -75,6 +81,12 @@ def NonStationary {O : Type} (required : Nat → O) (p : Nat) : Prop :=
     information processing: each cycle, at least some bits are
     irreversibly lost to entropy. Landauer's principle gives the
     minimum cost per bit erased (kT ln 2).
+
+    As a Lean axiom this is trivially satisfiable (pick loss = 1).
+    The physical content — that the second law guarantees positive
+    dissipation in bounded processors — lives in the interpretation.
+    The axiom asserts the shape (positive loss exists) that downstream
+    proofs require.
 
     Reject → lossless computation → closed loop survives. -/
 axiom dissipation : ∃ (loss : Nat), loss > 0

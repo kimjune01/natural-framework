@@ -32,7 +32,6 @@ Without gating, the store fills and the system halts.
     Falsifiable: if internal state can be as large as environment,
     no lossy encoding needed. Landauer prevents this. -/
 theorem perceive_forced (energy env_dim : Nat)
-    (he : energy > 0)
     (henv : env_dim > energy)
     : ∀ N : Nat, N ≤ energy → env_dim > N := by
   intro N hN
@@ -52,7 +51,6 @@ theorem perceive_forced (energy env_dim : Nat)
 theorem no_cache_cumulative_loss
     (input_rate drain_rate k : Nat)
     (hmismatch : input_rate > drain_rate)
-    (hk : k > 0)
     : k * (input_rate - drain_rate) ≥ k := by
   have hgap : input_rate - drain_rate ≥ 1 := by omega
   calc k * (input_rate - drain_rate)
@@ -67,7 +65,7 @@ theorem cache_from_rate_mismatch :
       input_rate > drain_rate ∧ drain_rate > 0 ∧
       ∀ k : Nat, k > 0 → k * (input_rate - drain_rate) ≥ k := by
   obtain ⟨ir, dr, hmm, hdr⟩ := rate_mismatch
-  exact ⟨ir, dr, hmm, hdr, fun k hk => no_cache_cumulative_loss ir dr k hmm hk⟩
+  exact ⟨ir, dr, hmm, hdr, fun k _ => no_cache_cumulative_loss ir dr k hmm⟩
 
 -- ============================================================
 -- Boundary 2: Selection before persistence
@@ -81,7 +79,6 @@ theorem cache_from_rate_mismatch :
     Falsifiable: infinite capacity → no pressure to select. -/
 theorem no_filter_fills_store
     (capacity items_per_cycle : Nat)
-    (hcap : capacity > 0)
     (hitems : items_per_cycle > 0)
     : ∃ t : Nat, t * items_per_cycle ≥ capacity := by
   exact ⟨capacity, by
@@ -93,19 +90,19 @@ theorem no_filter_fills_store
 -- Loop closure: Remember is forced
 -- ============================================================
 
-/-- A pipeline without persistence has no loop. Each cycle's
-    output is discarded. The system cannot learn from its past.
+/-- Without persistence, a system with fixed state is a pure function
+    of its current input. Same input always produces same output,
+    regardless of history.
 
-    Model: without Remember, the state after each cycle is
-    determined entirely by the current input and the fixed initial
-    policy. After N distinct inputs, behavior repeats.
+    This is the congruence fact that makes memoryless systems unable
+    to handle history-dependent tasks (shown by `no_remember_death`
+    in Removal.lean, which derives the failure from `history_matters`).
 
     Derived from: the pipeline structure (feedback requires persistence).
     Falsifiable: if the system doesn't need to loop, Remember is optional.
     But a non-looping system is open-loop: stimulus-response with no memory. -/
 theorem no_persistence_no_memory
-    (N : Nat) (hN : N > 0)
-    {I O : Type}
+    {N : Nat} {I O : Type}
     (response : Fin N → I → O)
     (fixed_state : Fin N)
     : ∀ (env : Nat → I),

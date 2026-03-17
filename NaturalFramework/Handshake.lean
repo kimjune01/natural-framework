@@ -197,9 +197,7 @@ structure InformationBudget where
   attend_loss : Nat
   /-- Bits lost by Consolidate -/
   consolidate_loss : Nat
-  /-- Total loss = sum of lossy steps -/
-  total_loss : filter_loss + attend_loss + consolidate_loss = filter_loss + attend_loss + consolidate_loss := rfl
-  /-- The budget balances -/
+  /-- The budget balances: injection covers total loss -/
   balanced : injected ≥ filter_loss + attend_loss + consolidate_loss
 
 /-- A closed loop has zero injection. Any positive loss compounds. -/
@@ -263,10 +261,14 @@ structure DegradedConsolidate where
   /-- But the kernel is broken -/
   kernel_broken : kernel_intact = false
 
-/-- The two diversity failure modes are independent.
-    An echo chamber has intact kernel + homogeneous input.
-    A degraded Consolidate has broken kernel + diverse input.
-    Both can coexist with a balanced information budget. -/
+/-- Both diversity failure modes are compatible with a balanced
+    information budget. This shows the budget alone does not prevent
+    either failure: the premises suffice to construct witnesses for
+    both the echo chamber and degraded Consolidate conclusions.
+
+    True independence (one holds while the other fails) is a
+    property of specific system configurations, not a theorem
+    about arbitrary parameters. -/
 theorem diversity_failures_independent
     (injected filter_loss attend_loss consolidate_loss : Nat)
     (hbalanced : injected ≥ filter_loss + attend_loss + consolidate_loss)
@@ -276,15 +278,18 @@ theorem diversity_failures_independent
       (∃ (_ : InformationBudget), diversity_threshold > 0) ∧
       -- Degraded Consolidate is possible (balanced budget, diverse input, kernel broken)
       (∃ (_ : InformationBudget), novel_items ≥ diversity_threshold) :=
-  ⟨⟨⟨injected, filter_loss, attend_loss, consolidate_loss, rfl, hbalanced⟩, hdiv⟩,
-   ⟨⟨injected, filter_loss, attend_loss, consolidate_loss, rfl, hbalanced⟩, hnovel⟩⟩
+  ⟨⟨⟨injected, filter_loss, attend_loss, consolidate_loss, hbalanced⟩, hdiv⟩,
+   ⟨⟨injected, filter_loss, attend_loss, consolidate_loss, hbalanced⟩, hnovel⟩⟩
 
 -- ============================================================
 -- Four Claims from Contracts
 -- ============================================================
 
-/-- Claim 1: If contracts match, algorithms are swappable.
-    Two kernels with the same contract are interchangeable. -/
+/-- Claim 1: Two kernels that preserve the same contract can both
+    occupy the same pipeline slot without breaking downstream.
+    This is the conjunction — both satisfy the contract — not a
+    proof that replacing one with the other preserves behavior.
+    Behavioral equivalence would require equal support sets. -/
 theorem swappable [Monad M] [Support M]
     {f g : Kernel M α β} {c : Contract β}
     (hf : ContractPreserving f c) (hg : ContractPreserving g c)

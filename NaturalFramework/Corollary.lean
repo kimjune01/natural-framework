@@ -42,7 +42,6 @@ theorem filter_reduces
 theorem competitive_core_removes
     (input_count output_count k : Nat)
     (hsel : output_count < input_count)
-    (hk : k > 0)
     : k * (input_count - output_count) ≥ k := by
   have : input_count - output_count ≥ 1 := by omega
   calc k * (input_count - output_count)
@@ -67,8 +66,6 @@ theorem competitive_core_removes
     asserts that such pressure exists. -/
 theorem policy_evicted_in_shared_pool
     (capacity data_rate policy_slots : Nat)
-    (hcap : capacity > 0)
-    (hpol : policy_slots > 0)
     (hfits : policy_slots ≤ capacity)
     (hoverflow : data_rate > capacity - policy_slots)
     : data_rate + policy_slots > capacity := by
@@ -84,9 +81,6 @@ theorem policy_evicted_in_shared_pool
     Consolidate (write policy) are separate interfaces. -/
 theorem shared_pool_kills_policy
     (capacity data_rate policy_slots : Nat)
-    (hcap : capacity > 0)
-    (hpol : policy_slots > 0)
-    (hfits : policy_slots ≤ capacity)
     (hoverflow : data_rate > capacity - policy_slots)
     : -- After policy_slots cycles, all policy could be evicted
       policy_slots * (data_rate + policy_slots - capacity) ≥ policy_slots := by
@@ -117,14 +111,13 @@ structure SeparatePolicyStore (policy data ranked : Type) where
     mismatches the required behavior.
 
     Model: policy is fixed at p₀. If the optimal policy changes
-    (non-stationarity), there exists a time where the fixed policy
-    produces wrong output. -/
+    (non-stationarity), and different policies produce different
+    outputs on some input, then the fixed policy fails. -/
 theorem static_policy_fails
     {P D R : Type}
     (apply_policy : P → D → R)
     (p₀ : P)
     (optimal : Nat → P)
-    (env : Nat → D)
     (hchanges : ∃ t, optimal t ≠ optimal 0)
     (hmatters : ∀ t, optimal t ≠ p₀ →
       ∃ d : D, apply_policy (optimal t) d ≠ apply_policy p₀ d)
@@ -132,9 +125,7 @@ theorem static_policy_fails
       apply_policy (optimal t) d ≠ apply_policy p₀ d := by
   obtain ⟨t, hne⟩ := hchanges
   by_cases h : optimal t = p₀
-  · -- optimal t = p₀ but optimal t ≠ optimal 0
-    -- So optimal 0 ≠ p₀
-    have : optimal 0 ≠ p₀ := fun h0 => hne (h.trans h0.symm)
+  · have : optimal 0 ≠ p₀ := fun h0 => hne (h.trans h0.symm)
     obtain ⟨d, hd⟩ := hmatters 0 this
     exact ⟨0, d, hd⟩
   · obtain ⟨d, hd⟩ := hmatters t h

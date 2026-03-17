@@ -101,28 +101,22 @@ theorem must_err_at_confusion
 -- 4. Finite discrimination
 -- ============================================================
 
-/-- A Fin N transducer has at most N distinct states.
-    Two input histories that produce the same state are
-    indistinguishable. The transducer can distinguish at most
-    N equivalence classes of input history.
+/-- Given a state collision where the environment repeats the same
+    input but requires different outputs, the transducer must err
+    at one of the colliding times.
 
-    After a state collision (guaranteed by pigeonhole in N+1 steps),
-    if the colliding times receive the same input but the environment
-    requires different responses, must_err_at_confusion applies.
-
-    The bound is tight: N states → at most N classes → errors when
-    environment requires > N classes. -/
-theorem finite_discrimination (N : Nat) (hN : N > 0)
-    {I O : Type}
+    The collision itself is guaranteed by pigeonhole (N+1 steps
+    through Fin N states — see `state_collision`). This theorem
+    takes the collision as hypothesis to separate the concerns:
+    pigeonhole provides the collision, this theorem provides the
+    consequence. -/
+theorem finite_discrimination
+    {N : Nat} {I O : Type}
     (t : BoundedTransducer N I O) (env : Nat → I) (s0 : Fin N)
     (required : Nat → O)
-    -- Pigeonhole gives collision
     (i j : Nat)
-    (hi : i < N + 1) (hj : j < N + 1) (hij : i < j)
     (hstate : t.stateTraj env s0 i = t.stateTraj env s0 j)
-    -- Environment repeats the input at collision times
     (hinput : env i = env j)
-    -- But requires different outputs
     (hdiff : required i ≠ required j)
     : ∃ k : Nat, t.output env s0 k ≠ required k := by
   have herr := must_err_at_confusion t env s0 required i j hstate hinput hdiff
@@ -134,16 +128,18 @@ theorem finite_discrimination (N : Nat) (hN : N > 0)
 -- Combined: the deterministic limitation
 -- ============================================================
 
-/-- The full chain from Landauer to limitation.
+/-- Three independently proved facts that together form the
+    deterministic limitation argument.
 
-    1. Landauer (axiom): bounded energy → state space Fin N.
-    2. Pigeonhole: N+1 steps → state collision.
-    3. Determinism: same state + same input → same output.
-    4. Confusion: if environment distinguishes confused histories → error.
+    The chain (Landauer → Fin N → pigeonhole → collision →
+    determinism → confusion → error) is in the reader's head,
+    not in this theorem. Each conjunct is proved separately;
+    the conjunction bundles them for reference.
 
-    Conclusion: a deterministic finite transducer cannot track an
-    environment that requires more than N history classes.
-    Therefore: not deterministic.
+    A true chain theorem would take `energy > 0` as sole input
+    and produce the error conclusion. That requires composing
+    the steps, which we leave to `state_collision` +
+    `must_err_at_confusion`.
 
     Falsifiable at every link:
     - Reject Landauer → N can be infinite → no forced collision.

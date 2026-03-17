@@ -202,9 +202,9 @@ theorem consolidate_has_no_slot (prev next : ForwardStage) :
     is the only configuration whose types compose. -/
 theorem pipeline_unique :
     -- The forward chain has exactly one valid ordering
-    (∀ (ord : Fin 5 → ForwardStage)
-       (hcompat : handshake_ok ord)
-       (hfirst : (ord ⟨0, by omega⟩).dom = .raw),
+    (∀ (ord : Fin 5 → ForwardStage),
+       handshake_ok ord →
+       (ord ⟨0, by omega⟩).dom = .raw →
        ∀ i : Fin 5, ord i = canonical i) ∧
     -- Consolidate's output type has no forward consumer
     (∀ s : ForwardStage, s.dom ≠ .policy) ∧

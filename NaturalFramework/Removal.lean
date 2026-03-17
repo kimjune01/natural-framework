@@ -75,7 +75,7 @@ theorem healthy_survives
 -- ============================================================
 
 /-- Lemma: zero injection with positive loss → death. -/
-theorem no_perceive_death (loss : Nat) (hloss : loss > 0)
+theorem no_perceive_death (loss : Nat)
     : ¬ survives 0 loss := by
   intro h; have := h 1 (by omega); simp [alive] at this
 
@@ -87,7 +87,7 @@ theorem no_perceive_death (loss : Nat) (hloss : loss > 0)
 theorem no_cache_death
     (input_rate drain_rate : Nat) (hmismatch : input_rate > drain_rate)
     : ∀ k : Nat, k > 0 → k * (input_rate - drain_rate) ≥ k := by
-  intro k hk
+  intro k _
   have : input_rate - drain_rate ≥ 1 := by omega
   calc k * (input_rate - drain_rate)
       ≥ k * 1 := Nat.mul_le_mul_left k this
@@ -99,7 +99,7 @@ theorem no_cache_death
 
 /-- Lemma: bounded store with positive input rate fills. -/
 theorem cache_must_evict
-    (capacity rate : Nat) (hcap : capacity > 0) (hrate : rate > 0)
+    (capacity rate : Nat) (hrate : rate > 0)
     : ∃ t : Nat, t * rate ≥ capacity := by
   exact ⟨capacity, by
     calc capacity * rate
@@ -117,9 +117,9 @@ theorem cache_must_evict
     Cache absorbs bursts but doesn't reduce average throughput.
     Only Filter (proper reduction) prevents downstream overflow. -/
 theorem no_filter_overflow
-    (capacity rate : Nat) (hcap : capacity > 0) (hrate : rate > 0)
+    (capacity rate : Nat) (hrate : rate > 0)
     : ∃ t : Nat, t * rate ≥ capacity :=
-  cache_must_evict capacity rate hcap hrate
+  cache_must_evict capacity rate hrate
 
 -- ============================================================
 -- A1: must read policy (not input-only)
@@ -249,10 +249,10 @@ theorem no_remember_death
 /-- All postcondition removals assembled. Each conjunct derives
     its conclusion from declared axioms. No assumed witnesses.
 
-    A3 and Co1 take the state collision as hypothesis because
-    the pigeonhole derivation (Fin N, N+1 steps → collision)
-    needs Mathlib. The collision itself is guaranteed by Landauer
-    (finite states) + pigeonhole.
+    A3 and Co1 take the state collision as hypothesis to separate
+    concerns: the collision is guaranteed by Landauer (finite states)
+    + pigeonhole (proved from scratch in Pigeonhole.lean), but the
+    removal test is about what happens GIVEN a collision.
 
     A1 models Attend removal as select : I → O (ignores state).
     R1 models Remember removal as BoundedTransducer with frozen s0
@@ -315,7 +315,7 @@ theorem removal_tests :
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- P1 from dissipation
     obtain ⟨loss, hloss⟩ := dissipation
-    exact ⟨loss, hloss, no_perceive_death loss hloss⟩
+    exact ⟨loss, hloss, no_perceive_death loss⟩
   · -- C1 from rate_mismatch
     obtain ⟨ir, dr, hmm, hdr⟩ := rate_mismatch
     exact ⟨ir, dr, hmm, hdr, no_cache_death ir dr hmm⟩
@@ -323,12 +323,12 @@ theorem removal_tests :
     intro energy he
     obtain ⟨N, hN, _⟩ := landauer energy he
     obtain ⟨ir, _, _, _⟩ := rate_mismatch
-    exact ⟨N, ir, hN, by omega, cache_must_evict N ir hN (by omega)⟩
+    exact ⟨N, ir, hN, by omega, cache_must_evict N ir (by omega)⟩
   · -- F1 from landauer + rate_mismatch
     intro energy he
     obtain ⟨N, hN, _⟩ := landauer energy he
     obtain ⟨ir, _, _, _⟩ := rate_mismatch
-    exact ⟨N, ir, hN, by omega, no_filter_overflow N ir hN (by omega)⟩
+    exact ⟨N, ir, hN, by omega, no_filter_overflow N ir (by omega)⟩
   · -- A1 from history_matters
     obtain ⟨env, req, t₁, t₂, hsame, hdiff⟩ := history_matters
     refine ⟨env, req, fun sel => ?_⟩

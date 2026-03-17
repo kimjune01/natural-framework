@@ -201,18 +201,28 @@ theorem tower_preserves_down [LawfulProbMonad M] [Support M]
 /-- The coupling lemma's hypothesis `hcon` is satisfied at every depth
     under either reading of the foundation.
 
-    - `life_at_zero`: supply `post pol` for the starting policy
-    - `attend_is_intentional`: supply `∀ pol, post pol`
+    - `life_at_zero` (left): supply `post pol` for the starting policy.
+      Up-induction builds preservation from passthrough.
+      Feeds `cycle_preserves_policy_at` (weak form).
+    - `attend_is_intentional` (right): supply `∀ pol, post pol`.
+      Down-induction gives preservation immediately.
+      Feeds `cycle_preserves_policy` (strong form).
 
-    Either way, the tower preserves and `cycle_preserves_policy` applies. -/
+    The disjunction mirrors `foundation : life_at_zero ∨ attend_is_intentional`
+    from Induction.lean. Both paths converge on the same conclusion. -/
 theorem tower_satisfies_hcon [LawfulProbMonad M] [Support M]
     {I : InterfaceTypes}
     (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)
     (d : Nat)
-    (hpost_all : ∀ pol : I.policy, h.consolidate_attend.post pol)
-    : ∀ (pol : I.policy) (per : I.persisted),
+    (pol : I.policy)
+    (foundation : h.consolidate_attend.post pol ∨ (∀ p : I.policy, h.consolidate_attend.post p))
+    : ∀ (per : I.persisted),
         ∀ pol' : I.policy,
           Support.support ((tower_pipeline (M := M) base encode d).consolidate pol per) pol' →
           h.consolidate_attend.post pol' :=
-  fun _ _ pol' _ => hpost_all pol'
+  foundation.elim
+    (fun hpol per pol' hsup =>
+      tower_preserves_up base encode h d pol per hpol pol' hsup)
+    (fun hall per pol' hsup =>
+      tower_preserves_down base encode h hall d pol per pol' hsup)

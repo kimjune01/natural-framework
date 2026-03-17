@@ -56,8 +56,10 @@ structure AttendContract (M : Type → Type) [Monad M] [Support M] (α : Type) w
   rank : Kernel M α α
   /-- Size measure on outputs -/
   measure : α → Nat
-  /-- Every output size is bounded by k -/
-  bounded : (k : Nat) → ∀ a : α, ∀ b : α, Support.support (rank a) b → measure b ≤ k
+  /-- The capacity bound on output size -/
+  bound : Nat
+  /-- Every output size is bounded -/
+  bounded : ∀ a : α, ∀ b : α, Support.support (rank a) b → measure b ≤ bound
   /-- Winners are dissimilar (diversity) -/
   diverse : α → Prop
 
@@ -81,17 +83,19 @@ structure RememberContract (M : Type → Type) [Monad M] [Support M] (α : Type)
   /-- Lossless: for every input, every output equals the input -/
   lossless : ∀ a : α, ∀ b : α, Support.support (persist a) b → b = a
 
-/-- The key theorem shape: if all contracts hold, the pipeline composes.
-    If any contract breaks, the loop dies.
-    Proof: unwrap via `support_bind`, then same structure. -/
+/-- Composition preserves the final contract. Only the last kernel's
+    contract matters for the composite's guarantee — the first kernel
+    produces intermediates, but the postcondition is checked at the end.
+
+    This is stronger than requiring both contracts: the composite
+    preserves `cg` regardless of whether `f` preserves any contract. -/
 theorem contract_composition_base [LawfulProbMonad M] [Support M]
     {f : Kernel M α β} {g : Kernel M β γ}
-    {cf : Contract β} {cg : Contract γ}
-    (hf : ContractPreserving f cf)
+    {cg : Contract γ}
     (hg : ContractPreserving g cg)
     : ContractPreserving (Kernel.comp f g) cg := by
   intro a c hc
   simp [Kernel.comp] at hc
   rw [Support.support_bind] at hc
-  obtain ⟨b, hb, hcb⟩ := hc
+  obtain ⟨b, _, hcb⟩ := hc
   exact hg b c hcb

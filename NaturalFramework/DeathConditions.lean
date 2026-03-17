@@ -24,27 +24,41 @@ structure Budget where
   balanced : input_bits ≥ loss_bits
 
 /-- Death condition 1: a broken step leaks extra bits.
-    If a morphism's contract fails, eventually the extra leak
-    exceeds any finite budget. -/
+    If a morphism's contract fails and leaks `extra_leak` bits per
+    cycle, the cumulative leak eventually exceeds any finite budget.
+    At cycle `budget + 1`: `(budget + 1) * extra_leak ≥ budget + 1 > budget`. -/
 theorem broken_step_death
     (budget extra_leak : Nat) (hleak : extra_leak > 0)
-    : ∃ n : Nat, n > budget := by
-  exact ⟨budget + 1, by omega⟩
+    : ∃ n : Nat, n * extra_leak > budget := by
+  refine ⟨budget + 1, ?_⟩
+  have h : (budget + 1) * extra_leak ≥ budget + 1 :=
+    calc (budget + 1) * extra_leak
+        ≥ (budget + 1) * 1 := Nat.mul_le_mul_left _ hleak
+      _ = budget + 1 := Nat.mul_one _
+  omega
 
 /-- Death condition 2: a closed loop has zero input bits.
-    Any positive loss drives the state to zero.
-    With loss = 1 per cycle, state₀ cycles suffice. -/
+    With positive loss per cycle, cumulative loss eventually depletes
+    all state bits. At cycle `state`: `state * loss ≥ state`. -/
 theorem closed_loop_zero_input
-    (state : Nat)
-    : ∃ n : Nat, n ≥ state := by
-  exact ⟨state, Nat.le_refl _⟩
+    (state loss : Nat) (hloss : loss > 0)
+    : ∃ n : Nat, n * loss ≥ state := by
+  exact ⟨state, by
+    calc state * loss
+        ≥ state * 1 := Nat.mul_le_mul_left _ hloss
+      _ = state := Nat.mul_one _⟩
 
 /-- Death condition 3: decaying input.
-    If input decreases each cycle, eventually input < loss. -/
+    If input decays by `decay` bits per cycle, the cumulative decay
+    eventually exceeds the initial input. At cycle `initial_input`:
+    `initial_input * decay ≥ initial_input`. -/
 theorem decaying_input_death
-    (initial_input loss : Nat) (hloss : loss > 0)
-    : ∃ threshold : Nat, threshold > initial_input := by
-  exact ⟨initial_input + 1, by omega⟩
+    (initial_input decay : Nat) (hdecay : decay > 0)
+    : ∃ n : Nat, n * decay ≥ initial_input := by
+  exact ⟨initial_input, by
+    calc initial_input * decay
+        ≥ initial_input * 1 := Nat.mul_le_mul_left _ hdecay
+      _ = initial_input := Nat.mul_one _⟩
 
 /-- The survival theorem (contrapositive of death conditions).
     If the budget balances every cycle, the loop persists.
