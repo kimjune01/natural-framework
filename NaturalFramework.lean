@@ -15,3 +15,5 @@ import NaturalFramework.Handshake
 import NaturalFramework.Uniqueness
 import NaturalFramework.Stochasticity
 import NaturalFramework.Removal
+import NaturalFramework.Induction
+import NaturalFramework.Fractal

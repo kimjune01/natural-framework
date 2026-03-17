@@ -12,6 +12,7 @@ processing inequality. Five compose forward; Consolidate runs backward
 inside the substrate. This module formalizes:
 
 - The handshake property: postcondition of stage N is precondition of stage N+1
+- Cross-cycle coupling: Consolidate at k → Attend at k+1 through the policy store
 - Ordering: rearranging forward stages breaks type compatibility
 - Data processing inequality: information decreases monotonically
 - Four claims from contracts
@@ -34,9 +35,13 @@ structure Handshake (β : Type) where
   /-- The handshake: post implies pre -/
   compatible : ∀ b : β, post b → pre b
 
-/-- A full forward pipeline handshake: four interface points, each compatible.
-    Consolidate is the backward pass and does not participate in the
-    forward handshake chain. -/
+/-- The full pipeline handshake: four forward interface points plus the
+    cross-cycle coupling through the policy store.
+
+    The four forward handshakes cover composition within a single cycle.
+    The fifth — consolidate_attend — covers the cross-cycle dependency:
+    Consolidate writes policy at cycle k, Attend reads it at cycle k+1.
+    Without this fifth handshake, the inductive step has a gap. -/
 structure PipelineHandshake (I : InterfaceTypes) where
   /-- Perceive's postcondition implies Cache's precondition -/
   perceive_cache : Handshake I.encoded
@@ -46,6 +51,22 @@ structure PipelineHandshake (I : InterfaceTypes) where
   filter_attend : Handshake I.selected
   /-- Attend's postcondition implies Remember's precondition -/
   attend_remember : Handshake I.ranked
+  /-- Consolidate's postcondition implies Attend's policy precondition
+      on the next cycle. The cross-cycle coupling: what Consolidate
+      guarantees at k is what Attend requires at k+1. -/
+  consolidate_attend : Handshake I.policy
+
+/-- The coupling lemma: a pipeline cycle preserves policy validity.
+    If Consolidate preserves its postcondition, the handshake guarantees
+    Attend's policy precondition holds on the next cycle.
+    This closes the gap in the inductive step. -/
+theorem cycle_preserves_policy
+    (h : PipelineHandshake I) (p : Pipeline I)
+    (hcon : ∀ (pol : I.policy) (per : I.persisted),
+      h.consolidate_attend.post (p.consolidate pol per))
+    (policy : I.policy) (input : I.raw)
+    : h.consolidate_attend.pre (p.cycle input policy).1 :=
+  h.consolidate_attend.compatible _ (hcon policy _)
 
 -- ============================================================
 -- Ordering: rearranging steps breaks type compatibility

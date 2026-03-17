@@ -7,13 +7,21 @@ falsifiable: reject any one and the dependent theorems break.
 Lean tracks axiom usage. Any theorem that depends on these is marked
 by the kernel. No hidden assumptions.
 
-## The five axioms
+## The five physics axioms
 
 1. **Landauer**: bounded energy → bounded distinguishable states.
 2. **Rate mismatch**: input can outpace processing.
 3. **Non-stationarity**: environments change.
 4. **Dissipation**: bounded systems lose information each cycle.
 5. **History matters**: tasks exist where context determines correct response.
+
+## The contested sixth
+
+These five constrain bounded systems. The sixth — what grounds
+the base case of the induction — is a choice between two starting points:
+- **Bottom-up**: life exists at time 0 (observation).
+- **Top-down**: the universe's Attend is intentional (purpose).
+Pick one, derive the other. See Induction.lean.
 -/
 
 -- ============================================================
