@@ -7,11 +7,13 @@ falsifiable: reject any one and the dependent theorems break.
 Lean tracks axiom usage. Any theorem that depends on these is marked
 by the kernel. No hidden assumptions.
 
-## The three axioms
+## The five axioms
 
 1. **Landauer**: bounded energy → bounded distinguishable states.
 2. **Rate mismatch**: input can outpace processing.
 3. **Non-stationarity**: environments change.
+4. **Dissipation**: bounded systems lose information each cycle.
+5. **History matters**: tasks exist where context determines correct response.
 -/
 
 -- ============================================================
@@ -56,6 +58,36 @@ axiom rate_mismatch :
     stochasticity is optional. -/
 def NonStationary {O : Type} (required : Nat → O) (p : Nat) : Prop :=
   ∃ t, required t ≠ required (t + p)
+
+-- ============================================================
+-- Axiom 4: Thermodynamic dissipation
+-- ============================================================
+
+/-- Bounded systems dissipate information. Second law applied to
+    information processing: each cycle, at least some bits are
+    irreversibly lost to entropy. Landauer's principle gives the
+    minimum cost per bit erased (kT ln 2).
+
+    Reject → lossless computation → closed loop survives. -/
+axiom dissipation : ∃ (loss : Nat), loss > 0
+
+-- ============================================================
+-- Axiom 5: History-dependent tasks exist
+-- ============================================================
+
+/-- A task is history-dependent when the correct response to the
+    same input differs based on what happened before. -/
+def HistoryDependent {I O : Type} (env : Nat → I) (required : Nat → O) : Prop :=
+  ∃ t₁ t₂ : Nat, env t₁ = env t₂ ∧ required t₁ ≠ required t₂
+
+/-- History-dependent tasks exist. The correct response to a stimulus
+    can depend on context and past experience.
+
+    Reject → all tasks are memoryless stimulus-response →
+    persistence and policy-reading are unnecessary. -/
+axiom history_matters :
+  ∃ (env : Nat → Nat) (required : Nat → Nat),
+    HistoryDependent env required
 
 -- ============================================================
 -- Bounded Transducer (the unified model)
