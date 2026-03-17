@@ -62,6 +62,7 @@ Requires [Lean 4](https://lean-lang.org/) via [elan](https://github.com/leanprov
 - [The Natural Framework](https://june.kim/the-natural-framework) — the derivation
 - [The Handshake](https://june.kim/the-handshake) — contracts and formal backbone
 - [The Parts Bin](https://june.kim/the-parts-bin) — algorithm catalog
+- [Metacognition Experiment](https://github.com/kimjune01/metacognition) — Bayesian adaptive test of framework utility for LLMs
 - [Validation Study](https://github.com/kimjune01/natural-framework-study) — preregistered retrospective empirical test
 
 ## License
