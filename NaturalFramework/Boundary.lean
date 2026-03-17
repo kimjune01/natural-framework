@@ -89,19 +89,6 @@ theorem no_filter_fills_store
         ≥ capacity * 1 := Nat.mul_le_mul_left capacity hitems
       _ = capacity := Nat.mul_one capacity⟩
 
-/-- A system that persists without selecting grows without bound
-    relative to its capacity. After capacity/rate cycles, it's full.
-    The system must then choose: halt or select.
-    Selection IS Filter. The choice is forced by bounded storage. -/
-theorem selection_forced_by_capacity
-    (capacity items_per_cycle : Nat)
-    (hcap : capacity > 0)
-    (hitems : items_per_cycle > 0)
-    (t : Nat) (ht : t * items_per_cycle ≥ capacity)
-    : -- Items accumulated exceed capacity: must select or halt
-      t * items_per_cycle - capacity ≥ 0 := by
-  omega
-
 -- ============================================================
 -- Loop closure: Remember is forced
 -- ============================================================

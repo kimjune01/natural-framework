@@ -74,19 +74,6 @@ theorem policy_evicted_in_shared_pool
     : data_rate + policy_slots > capacity := by
   omega
 
-/-- After t cycles of eviction pressure, the number of policy slots
-    lost is at least t (one per cycle minimum when data overflows).
-    Policy degrades linearly. -/
-theorem policy_degrades_linearly
-    (capacity data_rate policy_slots t : Nat)
-    (hoverflow : data_rate > capacity - policy_slots)
-    (ht : t > 0)
-    (hpol : policy_slots > 0)
-    (hfits : policy_slots ≤ capacity)
-    : -- Eviction pressure per cycle is at least 1
-      data_rate + policy_slots - capacity ≥ 1 := by
-  omega
-
 /-- If policy and data share a pool, and data volume exceeds free
     capacity, policy is corrupted within policy_slots cycles.
     The eviction rate exceeds zero, so after enough cycles all

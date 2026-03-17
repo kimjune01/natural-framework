@@ -49,8 +49,10 @@ structure FilterContract (α : Type) [SizeOf α] where
 structure AttendContract (α : Type) where
   /-- The ranking function -/
   rank : α → α
+  /-- Size measure on outputs -/
+  measure : α → Nat
   /-- Output size is bounded by k -/
-  bounded : (k : Nat) → ∀ a : α, True  -- placeholder: needs measure
+  bounded : (k : Nat) → ∀ a : α, measure (rank a) ≤ k
   /-- Winners are dissimilar (diversity) -/
   diverse : α → Prop
 
@@ -59,8 +61,10 @@ structure AttendContract (α : Type) where
 structure ConsolidateContract (policy ranked : Type) where
   /-- The consolidation function -/
   update : policy → ranked → policy
-  /-- The update is lossy: information about ranked candidates is lost -/
-  lossy : ∀ p : policy, ∀ r : ranked, True  -- placeholder: needs info measure
+  /-- Information measure on policy -/
+  info : policy → Nat
+  /-- The update is lossy: policy does not grow from ranked input -/
+  lossy : ∀ p : policy, ∀ r : ranked, info (update p r) ≤ info p
 
 /-- Remember contract: lossless relative to input.
     No additional loss at this step. Remember is the historically shaped

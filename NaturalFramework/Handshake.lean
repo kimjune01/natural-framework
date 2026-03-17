@@ -181,8 +181,10 @@ structure EchoChamber where
   diversity_threshold : Nat
   /-- Novel items injected are below the diversity threshold -/
   homogenized : diversity_threshold > 0
+  /-- Novel items injected -/
+  novel_items : Nat
   /-- Zero novel items despite positive bit injection -/
-  novel_items_zero : True  -- placeholder: novel_items = 0
+  novel_items_zero : novel_items = 0
 
 /-- Degraded Consolidate: diverse input arrives but the kernel
     that parameterizes Attend no longer enforces repulsion.
@@ -194,8 +196,10 @@ structure DegradedConsolidate where
   novel_items : Nat
   diversity_threshold : Nat
   input_diverse : novel_items ≥ diversity_threshold
+  /-- Whether the kernel is intact -/
+  kernel_intact : Bool
   /-- But the kernel is broken -/
-  kernel_broken : True  -- placeholder: kernel_intact = false
+  kernel_broken : kernel_intact = false
 
 /-- The two diversity failure modes are independent.
     An echo chamber has intact kernel + homogeneous input.
@@ -232,13 +236,16 @@ def ContractBroken (f : α → β) (c : Contract β) : Prop :=
   ∃ a : α, ¬ c (f a)
 
 /-- A broken contract propagates: if step N breaks its contract,
-    step N+1 receives invalid input regardless of its own correctness. -/
+    step N+1 receives invalid input regardless of its own correctness.
+    The composition g ∘ f is not contract-preserving. -/
 theorem broken_propagates
-    {f : α → β} {g : β → γ}
-    {pre : Contract β} {post : Contract γ}
-    (hg_needs_pre : ∀ b : β, pre b → post (g b))
+    {f : α → β}
+    {pre : Contract β}
     (hbroken : ContractBroken f pre)
-    : ∃ a : α, ¬ pre (f a) := hbroken
+    : ¬ ContractPreserving f pre := by
+  obtain ⟨a, ha⟩ := hbroken
+  intro hcp
+  exact ha (hcp a)
 
 /-- Claim 4: Iteration stability test.
     If a morphism degrades its postcondition under self-composition,

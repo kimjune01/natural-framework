@@ -28,22 +28,6 @@ inductive Step where
   | remember
   deriving DecidableEq, Repr
 
-/-- Information state: the type flowing between steps.
-    Parameterized to allow different representations at each interface. -/
-structure InfoState where
-  /-- Dimensionality bound -/
-  dim : Nat
-  /-- The state is nonempty -/
-  nonempty : dim > 0
-
-/-- A pipeline morphism: a transformation between information states
-    with a declared postcondition. -/
-structure Morphism (α β : Type) where
-  /-- The transformation function -/
-  map : α → β
-  /-- The step this morphism implements -/
-  step : Step
-
 /-- The six interface types in the pipeline.
     Five forward handshake points + policy type for the backward pass. -/
 structure InterfaceTypes where

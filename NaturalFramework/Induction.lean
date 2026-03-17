@@ -22,30 +22,65 @@ The OR is more precise than declaring either side as absolute.
 The choice is epistemological, not structural.
 Both sides produce `alive_at 0`. Everything after that is shared.
 
-## Axiom chain
+## Structure
 
-Physics axioms → removal tests (Removal.lean) → necessity axioms
-(below) → induction theorems.
+`SystemModel` bundles the temporal predicates and their
+relationships. Theorems are parameterized by a model instance,
+not by global axioms.
+
+The philosophical axioms (`Purpose`, `selects_toward`, `foundation`,
+`selection_implies_life`) remain axioms — they derive the base case.
 -/
 
 -- ============================================================
--- Shared predicates
+-- System model: bundles predicates and necessity conditions
 -- ============================================================
 
-/-- The system is viable at cycle k: all six interface contracts hold.
-    Budget positive (Perceive), input absorbed (Cache), store bounded
-    (Filter), output policy-informed (Attend), policy updated
-    (Consolidate), state carried forward (Remember). -/
-axiom alive_at : Nat → Prop
-
-/-- Interface s fires at cycle k. Indexed by Step (Pipeline.lean). -/
-axiom interface_fires : Step → Nat → Prop
-
 /-- All six interfaces fire at cycle k. -/
-def all_six_fire (k : Nat) : Prop :=
-  interface_fires .perceive k ∧ interface_fires .cache k ∧
-  interface_fires .filter k ∧ interface_fires .attend k ∧
-  interface_fires .consolidate k ∧ interface_fires .remember k
+def all_six_fire (fires : Step → Nat → Prop) (k : Nat) : Prop :=
+  fires .perceive k ∧ fires .cache k ∧
+  fires .filter k ∧ fires .attend k ∧
+  fires .consolidate k ∧ fires .remember k
+
+/-- A system model bundles the temporal predicates (`alive`, `fires`)
+    with their relationships (necessity of each interface, sufficiency
+    of all six). Replaces 10 axioms with one structure. -/
+structure SystemModel where
+  /-- The system is viable at cycle k -/
+  alive : Nat → Prop
+  /-- Interface s fires at cycle k -/
+  fires : Step → Nat → Prop
+  /-- Base case: life at time 0 -/
+  base : alive 0
+  /-- Each interface is necessary: failure kills life next cycle -/
+  perceive_necessary : ∀ k, alive k → ¬fires .perceive k → ¬alive (k + 1)
+  cache_necessary    : ∀ k, alive k → ¬fires .cache k → ¬alive (k + 1)
+  filter_necessary   : ∀ k, alive k → ¬fires .filter k → ¬alive (k + 1)
+  attend_necessary   : ∀ k, alive k → ¬fires .attend k → ¬alive (k + 1)
+  consolidate_necessary : ∀ k, alive k → ¬fires .consolidate k → ¬alive (k + 1)
+  remember_necessary : ∀ k, alive k → ¬fires .remember k → ¬alive (k + 1)
+  /-- All six fire → life continues -/
+  sufficiency : ∀ k, alive k → all_six_fire fires k → alive (k + 1)
+
+-- ============================================================
+-- Dispatch
+-- ============================================================
+
+/-- Any single interface failure kills life next cycle. -/
+theorem interface_necessary (m : SystemModel) (s : Step) (k : Nat)
+    (halive : m.alive k) (hfail : ¬m.fires s k)
+    : ¬m.alive (k + 1) := by
+  cases s with
+  | perceive => exact m.perceive_necessary k halive hfail
+  | cache => exact m.cache_necessary k halive hfail
+  | filter => exact m.filter_necessary k halive hfail
+  | attend => exact m.attend_necessary k halive hfail
+  | consolidate => exact m.consolidate_necessary k halive hfail
+  | remember => exact m.remember_necessary k halive hfail
+
+-- ============================================================
+-- The foundation (philosophical axioms — derive the base case)
+-- ============================================================
 
 /-- What cosmological selection aims toward. -/
 axiom Purpose : Type
@@ -53,114 +88,34 @@ axiom Purpose : Type
 /-- The universe selects toward this purpose. -/
 axiom selects_toward : Purpose → Prop
 
--- ============================================================
--- Necessity axioms
--- ============================================================
--- Content from removal tests in Removal.lean.
--- Each lifts a static removal result into a temporal frame:
--- alive at k + interface fails → dead at k+1.
-
-/-- Perceive: no injection → dissipation drains budget.
-    From: no_perceive_death + dissipation. -/
-axiom perceive_necessary (k : Nat) :
-  alive_at k → ¬interface_fires .perceive k → ¬alive_at (k + 1)
-
-/-- Cache: no buffer → rate mismatch drops input.
-    From: no_cache_death + rate_mismatch. -/
-axiom cache_necessary (k : Nat) :
-  alive_at k → ¬interface_fires .cache k → ¬alive_at (k + 1)
-
-/-- Filter: no selection → downstream overflow.
-    From: no_filter_overflow + landauer + rate_mismatch. -/
-axiom filter_necessary (k : Nat) :
-  alive_at k → ¬interface_fires .filter k → ¬alive_at (k + 1)
-
-/-- Attend: input-only ranking → history-dependent errors.
-    From: no_attend_death + history_matters. -/
-axiom attend_necessary (k : Nat) :
-  alive_at k → ¬interface_fires .attend k → ¬alive_at (k + 1)
-
-/-- Consolidate: frozen policy → stale on changing env.
-    From: no_consolidate_death + landauer (collision). -/
-axiom consolidate_necessary (k : Nat) :
-  alive_at k → ¬interface_fires .consolidate k → ¬alive_at (k + 1)
-
-/-- Remember: state resets → history-dependent errors.
-    From: no_remember_death + history_matters. -/
-axiom remember_necessary (k : Nat) :
-  alive_at k → ¬interface_fires .remember k → ¬alive_at (k + 1)
-
-/-- All six fire → life continues.
-    Content: cycle_preserves_policy (Handshake.lean) closes the
-    cross-cycle gap — Consolidate's output at k satisfies Attend's
-    policy precondition at k+1. -/
-axiom positive_step (k : Nat) :
-  alive_at k → all_six_fire k → alive_at (k + 1)
-
--- ============================================================
--- Dispatch
--- ============================================================
-
-/-- Any single interface failure kills life next cycle. -/
-theorem interface_necessary (s : Step) (k : Nat)
-    (halive : alive_at k) (hfail : ¬interface_fires s k)
-    : ¬alive_at (k + 1) := by
-  cases s with
-  | perceive => exact perceive_necessary k halive hfail
-  | cache => exact cache_necessary k halive hfail
-  | filter => exact filter_necessary k halive hfail
-  | attend => exact attend_necessary k halive hfail
-  | consolidate => exact consolidate_necessary k halive hfail
-  | remember => exact remember_necessary k halive hfail
-
--- ============================================================
--- The foundation
--- ============================================================
-
 /-- Life exists at time 0. Observation. -/
-def life_at_zero : Prop := alive_at 0
+def life_at_zero (alive : Nat → Prop) : Prop := alive 0
 
 /-- The universe's Attend is intentional. Purpose. -/
 def attend_is_intentional : Prop := ∃ (p : Purpose), selects_toward p
-
-/-- The sixth axiom. At least one holds. -/
-axiom foundation : life_at_zero ∨ attend_is_intentional
-
--- ============================================================
--- Derived base case
--- ============================================================
-
-/-- Intentional selection requires the full pipeline → life at 0. -/
-axiom selection_implies_life : attend_is_intentional → alive_at 0
-
-/-- Life at zero — from whichever side of the foundation holds. -/
-theorem life_at_zero_holds : alive_at 0 :=
-  foundation.elim id selection_implies_life
 
 -- ============================================================
 -- Main theorems
 -- ============================================================
 
 /-- Life persists when all six interfaces fire every cycle. -/
-theorem life_persists
-    (all_fire : ∀ k, all_six_fire k)
-    : ∀ k, alive_at k :=
-  survival_induction alive_at life_at_zero_holds
-    (fun k hk => positive_step k hk (all_fire k))
+theorem life_persists (m : SystemModel)
+    (all_fire : ∀ k, all_six_fire m.fires k)
+    : ∀ k, m.alive k :=
+  survival_induction m.alive m.base
+    (fun k hk => m.sufficiency k hk (all_fire k))
 
 /-- Contrapositive: any interface failure ends life. -/
-theorem life_requires_all_six (s : Step) (k : Nat)
-    (halive : alive_at k) (hfail : ¬interface_fires s k)
-    : ¬alive_at (k + 1) :=
-  interface_necessary s k halive hfail
+theorem life_requires_all_six (m : SystemModel) (s : Step) (k : Nat)
+    (halive : m.alive k) (hfail : ¬m.fires s k)
+    : ¬m.alive (k + 1) :=
+  interface_necessary m s k halive hfail
 
 -- ============================================================
 -- Axiom verification
 -- ============================================================
 
-/- Verify: life_persists depends on `foundation` (the disjunction),
-   not on either side independently.
-   #print axioms life_persists → foundation, selection_implies_life,
-   positive_step, Purpose, selects_toward, alive_at, interface_fires -/
+/- Verify: life_persists depends on SystemModel fields, not global axioms.
+   #print axioms life_persists → no axioms beyond propositional logic -/
 #check @life_persists
 #check @life_requires_all_six

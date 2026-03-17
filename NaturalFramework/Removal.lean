@@ -55,17 +55,6 @@ derives every conclusion from the declared axioms. No assumed witnesses.
 -/
 
 -- ============================================================
--- Precondition: Encodable objects
--- ============================================================
-
-/-- Scope condition: env has more configurations than internal state. -/
-theorem encodable_precondition
-    (energy env_dim : Nat)
-    (henv : env_dim > energy)
-    : ∀ N : Nat, N ≤ energy → env_dim > N := by
-  intro N hN; omega
-
--- ============================================================
 -- Survival definition
 -- ============================================================
 
