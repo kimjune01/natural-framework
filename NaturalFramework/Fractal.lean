@@ -26,14 +26,14 @@ Tower height ≤ initial bit budget.
 
 ## Two directions of induction
 
-The foundation axiom is a disjunction: `life_at_zero ∨ attend_is_intentional`.
+The foundation axiom is a disjunction: `life_at_zero ∨ god_is_real`.
 Each side gives a different induction on the tower:
 
 **Up-induction (life_at_zero)**: Observe life. Passthrough works (d=0).
 Build upward: if depth d preserves the postcondition for a given policy,
 so does depth d+1. The mechanism is constructed from the ground up.
 
-**Down-induction (attend_is_intentional)**: Purpose guarantees the
+**Down-induction (god_is_real)**: Purpose guarantees the
 postcondition holds universally. Every policy satisfies it by design.
 Tower preservation at every depth is immediate — no step-by-step
 construction needed. The mechanism is transparent to purpose.
@@ -169,11 +169,11 @@ theorem tower_preserves_up [LawfulProbMonad M] [Support M]
     exact ih pol per' hpol result.1 hper'
 
 -- ============================================================
--- Down-induction: the attend_is_intentional path
+-- Down-induction: the god_is_real path
 -- ============================================================
 
 /-- Down-induction on the tower. Corresponds to the
-    `attend_is_intentional` reading of the foundation axiom.
+    `god_is_real` reading of the foundation axiom.
 
     If the postcondition holds universally — every policy satisfies
     it, because the universe's Attend is intentional and selection is
@@ -204,11 +204,11 @@ theorem tower_preserves_down [LawfulProbMonad M] [Support M]
     - `life_at_zero` (left): supply `post pol` for the starting policy.
       Up-induction builds preservation from passthrough.
       Feeds `cycle_preserves_policy_at` (weak form).
-    - `attend_is_intentional` (right): supply `∀ pol, post pol`.
+    - `god_is_real` (right): supply `∀ pol, post pol`.
       Down-induction gives preservation immediately.
       Feeds `cycle_preserves_policy` (strong form).
 
-    The disjunction mirrors `foundation : life_at_zero ∨ attend_is_intentional`
+    The disjunction mirrors `axiom foundation : life_at_zero ∨ god_is_real`
     from Induction.lean. Both paths converge on the same conclusion. -/
 theorem tower_satisfies_hcon [LawfulProbMonad M] [Support M]
     {I : InterfaceTypes}

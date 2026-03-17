@@ -86,11 +86,22 @@ axiom Purpose : Type
 /-- The universe selects toward this purpose. -/
 axiom selects_toward : Purpose → Prop
 
-/-- Life exists at time 0. Observation. -/
-def life_at_zero (alive : Nat → Prop) : Prop := alive 0
+/-- Life exists at time 0. An empirical observation. -/
+def life_at_zero : Prop := ∃ (alive : Nat → Prop), alive 0
 
-/-- The universe's Attend is intentional. Purpose. -/
-def attend_is_intentional : Prop := ∃ (p : Purpose), selects_toward p
+/-- God is real. The universe selects with purpose. -/
+def god_is_real : Prop := ∃ (p : Purpose), selects_toward p
+
+/-- The foundation: one of two must hold.
+
+    As with `landauer` and `dissipation`, the Lean axiom is trivially
+    satisfiable (`life_at_zero` holds via `fun _ => True`). The content
+    is epistemological: the base case for induction comes from either
+    observation or purpose. Both readings produce `alive 0` in a
+    `SystemModel`. The disjunction is mirrored in `tower_satisfies_hcon`
+    (Fractal.lean), where the two branches drive different induction
+    directions on the consolidation tower. -/
+axiom foundation : life_at_zero ∨ god_is_real
 
 -- ============================================================
 -- Main theorems

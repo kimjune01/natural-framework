@@ -39,7 +39,7 @@ The Lean proofs **do not** establish:
 | `Pigeonhole.lean` | No injection Fin (n+1) → Fin n, pigeonhole collision theorem |
 | `Stochasticity.lean` | Determinism → confusion → error chain, state collision via pigeonhole |
 | `Removal.lean` | Ten-conjunct falsification table: remove any postcondition, system dies |
-| `Induction.lean` | Foundation axiom (disjunction), `life_persists`, `life_requires_all_six` |
+| `Induction.lean` | `axiom foundation : life_at_zero ∨ god_is_real`, `life_persists`, `life_requires_all_six` |
 | `Fractal.lean` | Recursive consolidation tower, DPI termination, `tower_preserves_post` over support |
 
 ## What compiles

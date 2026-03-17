@@ -4,7 +4,12 @@ import NaturalFramework.Axioms
 # Boundary proofs
 
 The two boundary arguments that force the pipeline's existence.
-Derived from the physics axioms, not assumed.
+
+"Forced" here means: removing the role produces a measurable bad
+outcome (overflow, cumulative loss, indistinguishable histories).
+The proofs are arithmetic consequences of the axioms, not existence
+proofs of surjections, buffers, or filter objects. The informal
+argument bridges from "bad outcome without X" to "X must exist."
 
 ## Boundary 1: Encoding before selection
 

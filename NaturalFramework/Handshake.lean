@@ -89,7 +89,7 @@ theorem cycle_preserves_policy [LawfulProbMonad M] [Monad M] [Support M]
 
 /-- Weaker form: `hcon` only needed for the specific input policy.
     The cycle only invokes Consolidate with the policy it received.
-    Needed for up-induction on the tower (life_at_zero path),
+    Needed for up-induction on the tower (`life_at_zero` path),
     where we only know `post` for the starting policy. -/
 theorem cycle_preserves_policy_at [LawfulProbMonad M] [Monad M] [Support M]
     (h : PipelineHandshake I) (p : Pipeline M I)
