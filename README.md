@@ -8,13 +8,27 @@ Any bounded information processor that persists through time must implement six 
 
 The six roles are morphisms in Stoch — the Kleisli category of a probability monad. When `M = Id`, the deterministic case is recovered.
 
+## What the proofs establish vs. what they don't
+
+The Lean proofs **do** establish:
+- Given the typed pipeline vocabulary, the forward ordering is unique (`Uniqueness.lean`)
+- Removing any postcondition produces failure (`Removal.lean`)
+- Contracts compose through stochastic kernels (`Handshake.lean`)
+- Recursive consolidation preserves postconditions under both induction directions (`Fractal.lean`)
+- Deterministic finite transducers have bounded discrimination (`Stochasticity.lean` + `Pigeonhole.lean`)
+
+The Lean proofs **do not** establish:
+- That the six roles are the *only possible* decomposition — the roles are built into the type vocabulary, not derived from axioms alone
+- Distinctly probabilistic claims (entropy, conditioning, DPI with measure) — the `Support` abstraction reasons about reachability, not probability mass
+- That the physics axioms encode their physical content — `landauer` and `dissipation` are trivially satisfiable over Nat (see docstrings)
+
 ## Structure
 
 | File | What it formalizes |
 |------|-------------------|
 | `ProbabilityMonad.lean` | `LawfulProbMonad` class, `Support` class, `Id` instances |
 | `Stoch.lean` | `Kernel` type, Kleisli composition, category laws from monad laws, deterministic embedding |
-| `Axioms.lean` | Five physics axioms (Landauer, rate mismatch, non-stationarity, dissipation, history matters) + bounded transducer model |
+| `Axioms.lean` | Four physics axioms + one predicate definition (Landauer, rate mismatch, non-stationarity, dissipation, history matters) + bounded transducer model |
 | `Pipeline.lean` | Six roles, interface types, forward/cycle/iterate as stochastic kernel composition |
 | `Contracts.lean` | Postconditions over support, contract preservation, iteration stability |
 | `Boundary.lean` | Perceive forced (Landauer), Cache forced (rate mismatch), Filter forced (bounded storage), Remember forced (loop closure) |

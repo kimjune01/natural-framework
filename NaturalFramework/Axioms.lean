@@ -7,13 +7,15 @@ falsifiable: reject any one and the dependent theorems break.
 Lean tracks axiom usage. Any theorem that depends on these is marked
 by the kernel. No hidden assumptions.
 
-## The five physics axioms
+## The physics axioms
 
-1. **Landauer**: bounded energy → bounded distinguishable states.
-2. **Rate mismatch**: input can outpace processing.
-3. **Non-stationarity**: environments change.
-4. **Dissipation**: bounded systems lose information each cycle.
-5. **History matters**: tasks exist where context determines correct response.
+Four `axiom` declarations plus one predicate definition:
+
+1. **Landauer** (axiom): bounded energy → bounded distinguishable states.
+2. **Rate mismatch** (axiom): input can outpace processing.
+3. **Non-stationarity** (def): environments change. A property, not a universal law.
+4. **Dissipation** (axiom): bounded systems lose information each cycle.
+5. **History matters** (axiom): tasks exist where context determines correct response.
 
 ## The contested sixth
 

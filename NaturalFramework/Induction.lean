@@ -4,32 +4,30 @@ import NaturalFramework.DeathConditions
 /-!
 # Induction: Life Requires All Six Interfaces at Every Cycle
 
-One axiom, two readings.
-
 ## The foundation
 
-`axiom foundation : life_at_zero ∨ attend_is_intentional`
-
-Pick one side. The inductive machinery is identical either way.
-The OR is more precise than declaring either side as absolute.
+The base case — `alive 0` — is a field of `SystemModel`, not a
+global axiom. The informal argument offers two readings:
 
 - **Left (empirical)**: life exists at time 0. Observation.
 - **Right (teleological)**: the universe's Attend is intentional.
   Selection requires the full pipeline. Life at zero follows.
 
-## The fork
-
-The choice is epistemological, not structural.
-Both sides produce `alive_at 0`. Everything after that is shared.
+The Lean code does not formalize the disjunction as an axiom.
+`SystemModel.base : alive 0` is the base case regardless of which
+reading supplies it. The two readings motivate the two induction
+directions in Fractal.lean (`tower_preserves_up` and
+`tower_preserves_down`), where the disjunction appears explicitly.
 
 ## Structure
 
-`SystemModel` bundles the temporal predicates and their
-relationships. Theorems are parameterized by a model instance,
-not by global axioms.
+`SystemModel` bundles the temporal predicates (`alive`, `fires`)
+and their relationships. Theorems are parameterized by a model
+instance, not by global axioms.
 
-The philosophical axioms (`Purpose`, `selects_toward`, `foundation`,
-`selection_implies_life`) remain axioms — they derive the base case.
+`Purpose` and `selects_toward` are declared as axioms for
+completeness but are unused by any theorem. They exist to name
+the teleological reading, not to contribute to proofs.
 -/
 
 -- ============================================================

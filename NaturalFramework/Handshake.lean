@@ -41,7 +41,11 @@ structure Handshake (β : Type) where
     The four forward handshakes cover composition within a single cycle.
     The fifth — consolidate_attend — covers the cross-cycle dependency:
     Consolidate writes policy at cycle k, Attend reads it at cycle k+1.
-    Without this fifth handshake, the inductive step has a gap. -/
+
+    Note: `cycle_preserves_policy` uses only `consolidate_attend`.
+    The four forward handshakes constrain composition but are not
+    referenced in the coupling proof because the cycle's support
+    decomposition already tracks the forward stages. -/
 structure PipelineHandshake (I : InterfaceTypes) where
   /-- Perceive's postcondition implies Cache's precondition -/
   perceive_cache : Handshake I.encoded
@@ -131,14 +135,16 @@ theorem cycle_consolidate_support [LawfulProbMonad M] [Monad M] [Support M]
 -- ============================================================
 
 /-- The pipeline steps form a total order.
-    Each step has a position; composition respects the order. -/
+    Five forward stages (0–4) then Consolidate (5, backward pass).
+    Matches execution order in `Pipeline.cycle`:
+    forward (perceive→cache→filter→attend) → remember → consolidate. -/
 def Step.position : Step → Fin 6
   | .perceive    => ⟨0, by omega⟩
   | .cache       => ⟨1, by omega⟩
   | .filter      => ⟨2, by omega⟩
   | .attend      => ⟨3, by omega⟩
-  | .consolidate => ⟨4, by omega⟩
-  | .remember    => ⟨5, by omega⟩
+  | .remember    => ⟨4, by omega⟩
+  | .consolidate => ⟨5, by omega⟩
 
 /-- The position mapping is injective: distinct steps have distinct positions. -/
 theorem step_position_injective : Function.Injective Step.position := by
