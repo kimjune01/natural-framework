@@ -275,7 +275,7 @@ structure DegradedConsolidate where
     True independence (one holds while the other fails) is a
     property of specific system configurations, not a theorem
     about arbitrary parameters. -/
-theorem diversity_failures_independent
+theorem diversity_failures_compatible
     (injected filter_loss attend_loss consolidate_loss : Nat)
     (hbalanced : injected ≥ filter_loss + attend_loss + consolidate_loss)
     (diversity_threshold : Nat) (hdiv : diversity_threshold > 0)

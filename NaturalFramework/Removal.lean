@@ -246,13 +246,13 @@ theorem no_remember_death
 -- The falsification table
 -- ============================================================
 
-/-- All postcondition removals assembled. Each conjunct derives
-    its conclusion from declared axioms. No assumed witnesses.
-
-    A3 and Co1 take the state collision as hypothesis to separate
-    concerns: the collision is guaranteed by Landauer (finite states)
-    + pigeonhole (proved from scratch in Pigeonhole.lean), but the
-    removal test is about what happens GIVEN a collision.
+/-- All postcondition removals assembled. Eight of ten conjuncts
+    derive their conclusions from declared axioms with no assumed
+    witnesses. A3 and Co1 are the exceptions: they take a state
+    collision as hypothesis. The collision is guaranteed by Landauer
+    (finite states) + pigeonhole (Pigeonhole.lean), but the removal
+    test is about what happens GIVEN a collision, not about producing
+    one.
 
     A1 models Attend removal as select : I → O (ignores state).
     R1 models Remember removal as BoundedTransducer with frozen s0

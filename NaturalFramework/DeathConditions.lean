@@ -60,11 +60,11 @@ theorem decaying_input_death
         ≥ initial_input * 1 := Nat.mul_le_mul_left _ hdecay
       _ = initial_input := Nat.mul_one _⟩
 
-/-- The survival theorem (contrapositive of death conditions).
-    If the budget balances every cycle, the loop persists.
-    This is the inductive step: if cycle n preserves all contracts,
-    cycle n+1 preserves them, because contract preservation is a
-    property of each morphism, not of the cycle count. -/
+/-- Induction on Nat, named for use by `life_persists`.
+    Given a base case and an inductive step, the property holds
+    for all n. This is standard Nat.rec, not a consequence of the
+    death conditions above — it provides the shared inductive
+    structure that the death conditions motivate. -/
 theorem survival_induction
     (contract_holds : Nat → Prop)
     (base : contract_holds 0)
