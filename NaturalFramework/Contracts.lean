@@ -1,87 +1,97 @@
+import NaturalFramework.Pipeline
+
 /-!
 # Contracts
 
 Each pipeline step carries a postcondition — a structural guarantee on
-its output. A morphism that preserves its contract through composition
+its output. A kernel that preserves its contract through composition
 belongs in the pipeline. One that doesn't breaks downstream.
+
+All contract definitions quantify over the support of the kernel:
+every possible output must satisfy the postcondition.
 
 ## The six contracts
 
 | Step        | Type                      | Guarantee                                       |
 |-------------|---------------------------|-------------------------------------------------|
-| Perceive    | raw → encoded             | Parseable by next step. Injects new bits.       |
-| Cache       | encoded → indexed         | Retrievable by key.                             |
-| Filter      | indexed → selected        | Strictly smaller.                               |
-| Attend      | (policy, selected) → ranked | Ordered, diverse, bounded.                    |
-| Consolidate | (policy, ranked) → policy'  | Lossy. Includes selection on candidates.      |
-| Remember    | policy' → persisted       | Retrievable on next cycle's Perceive.           |
+| Perceive    | raw → M encoded           | Parseable by next step. Injects new bits.       |
+| Cache       | encoded → M indexed       | Retrievable by key.                             |
+| Filter      | indexed → M selected      | Strictly smaller.                               |
+| Attend      | (policy, selected) → M ranked | Ordered, diverse, bounded.                  |
+| Consolidate | (policy, ranked) → M policy'  | Lossy. Includes selection on candidates.    |
+| Remember    | policy' → M persisted     | Retrievable on next cycle's Perceive.           |
 
 ## Main definitions
 
 - `Contract` — a predicate on morphism outputs
-- `ContractPreserving` — a morphism satisfies its contract on all inputs
+- `ContractPreserving` — all outputs of a kernel satisfy the contract
 - `IterationStable` — contract holds under re-application
 -/
 
 /-- A contract is a predicate that a morphism's output must satisfy. -/
 def Contract (β : Type) := β → Prop
 
-/-- A morphism is contract-preserving if its output satisfies the
-    contract for every valid input. -/
-def ContractPreserving (f : α → β) (contract : Contract β) : Prop :=
-  ∀ a : α, contract (f a)
+/-- A kernel is contract-preserving if every possible output satisfies
+    the contract for every input. Quantifies over support. -/
+def ContractPreserving [Monad M] [Support M] (f : Kernel M α β) (contract : Contract β) : Prop :=
+  ∀ a : α, ∀ b : β, Support.support (f a) b → contract b
 
-/-- A morphism is iteration-stable if its contract still holds
+/-- A kernel is iteration-stable if its contract still holds
     when the full pipeline is re-applied. The postcondition survives
     re-application: sort a sorted list — still sorted.
     MMR a diverse slate — still diverse. -/
-def IterationStable (f : α → α) (contract : Contract α) : Prop :=
-  ∀ a : α, contract a → contract (f a)
+def IterationStable [Monad M] [Support M] (f : Kernel M α α) (contract : Contract α) : Prop :=
+  ∀ a : α, contract a → ∀ b : α, Support.support (f a) b → contract b
 
 /-- Filter contract: output is strictly smaller than input. -/
-structure FilterContract (α : Type) [SizeOf α] where
-  /-- The filter function -/
-  filter : α → α
-  /-- Output is strictly smaller -/
-  strictly_smaller : ∀ a : α, sizeOf (filter a) < sizeOf a
+structure FilterContract (M : Type → Type) [Monad M] [Support M] (α : Type) [SizeOf α] where
+  /-- The filter kernel -/
+  filter : Kernel M α α
+  /-- Every output is strictly smaller -/
+  strictly_smaller : ∀ a : α, ∀ b : α, Support.support (filter a) b → sizeOf b < sizeOf a
 
 /-- Attend contract: output is ordered, diverse, and bounded. -/
-structure AttendContract (α : Type) where
-  /-- The ranking function -/
-  rank : α → α
+structure AttendContract (M : Type → Type) [Monad M] [Support M] (α : Type) where
+  /-- The ranking kernel -/
+  rank : Kernel M α α
   /-- Size measure on outputs -/
   measure : α → Nat
-  /-- Output size is bounded by k -/
-  bounded : (k : Nat) → ∀ a : α, measure (rank a) ≤ k
+  /-- Every output size is bounded by k -/
+  bounded : (k : Nat) → ∀ a : α, ∀ b : α, Support.support (rank a) b → measure b ≤ k
   /-- Winners are dissimilar (diversity) -/
   diverse : α → Prop
 
 /-- Consolidate contract: the operation is lossy and includes
     selection on candidates. The only procedure that writes procedures. -/
-structure ConsolidateContract (policy ranked : Type) where
-  /-- The consolidation function -/
-  update : policy → ranked → policy
+structure ConsolidateContract (M : Type → Type) [Monad M] [Support M] (policy ranked : Type) where
+  /-- The consolidation kernel -/
+  update : policy → Kernel M ranked policy
   /-- Information measure on policy -/
   info : policy → Nat
-  /-- The update is lossy: policy does not grow from ranked input -/
-  lossy : ∀ p : policy, ∀ r : ranked, info (update p r) ≤ info p
+  /-- Every output is lossy: policy does not grow from ranked input -/
+  lossy : ∀ p : policy, ∀ r : ranked, ∀ p' : policy,
+    Support.support (update p r) p' → info p' ≤ info p
 
 /-- Remember contract: lossless relative to input.
     No additional loss at this step. Remember is the historically shaped
     substrate — the part of the medium that carries the system's past forward. -/
-structure RememberContract (α : Type) where
-  /-- The persistence function -/
-  persist : α → α
-  /-- Lossless: recoverable from output -/
-  lossless : Function.Injective persist
+structure RememberContract (M : Type → Type) [Monad M] [Support M] (α : Type) where
+  /-- The persistence kernel -/
+  persist : Kernel M α α
+  /-- Lossless: for every input, every output equals the input -/
+  lossless : ∀ a : α, ∀ b : α, Support.support (persist a) b → b = a
 
 /-- The key theorem shape: if all contracts hold, the pipeline composes.
-    If any contract breaks, the loop dies. -/
-theorem contract_composition_base
-    {f : α → β} {g : β → γ}
+    If any contract breaks, the loop dies.
+    Proof: unwrap via `support_bind`, then same structure. -/
+theorem contract_composition_base [LawfulProbMonad M] [Support M]
+    {f : Kernel M α β} {g : Kernel M β γ}
     {cf : Contract β} {cg : Contract γ}
     (hf : ContractPreserving f cf)
     (hg : ContractPreserving g cg)
-    : ContractPreserving (g ∘ f) cg := by
-  intro a
-  exact hg (f a)
+    : ContractPreserving (Kernel.comp f g) cg := by
+  intro a c hc
+  simp [Kernel.comp] at hc
+  rw [Support.support_bind] at hc
+  obtain ⟨b, hb, hcb⟩ := hc
+  exact hg b c hcb

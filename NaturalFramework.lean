@@ -5,6 +5,8 @@
 -- https://june.kim/the-natural-framework
 -- https://june.kim/the-handshake
 
+import NaturalFramework.ProbabilityMonad
+import NaturalFramework.Stoch
 import NaturalFramework.Axioms
 import NaturalFramework.Pipeline
 import NaturalFramework.Contracts
@@ -13,6 +15,7 @@ import NaturalFramework.Corollary
 import NaturalFramework.DeathConditions
 import NaturalFramework.Handshake
 import NaturalFramework.Uniqueness
+import NaturalFramework.Pigeonhole
 import NaturalFramework.Stochasticity
 import NaturalFramework.Removal
 import NaturalFramework.Induction

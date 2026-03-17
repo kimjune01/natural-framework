@@ -1,4 +1,5 @@
 import NaturalFramework.Axioms
+import NaturalFramework.Pigeonhole
 
 /-!
 # Stochasticity
@@ -55,15 +56,14 @@ theorem same_state_same_input_same_output
 -- 2. State collision (pigeonhole)
 -- ============================================================
 
-/-- In N+1 steps, a Fin N transducer must revisit a state.
-    N+1 values in N slots: pigeonhole (Dirichlet 1834).
-    Formal proof requires Mathlib's Fintype machinery. -/
+/-- Pigeonhole gives a state collision in N+1 steps through Fin N states.
+    Proved in Pigeonhole.lean via element removal and induction. -/
 theorem state_collision (N : Nat) (hN : N > 0)
-    {I O : Type}
-    (t : BoundedTransducer N I O) (env : Nat → I) (s0 : Fin N)
-    : ∃ i j : Nat, i < N + 1 ∧ j < N + 1 ∧ i < j ∧
-      t.stateTraj env s0 i = t.stateTraj env s0 j := by
-  sorry -- Dirichlet's box principle; needs Mathlib
+    {I O : Type} (t : BoundedTransducer N I O)
+    (env : Nat → I) (s0 : Fin N)
+    : ∃ i j : Nat, i < N + 1 ∧ j < N + 1 ∧ i < j
+        ∧ t.stateTraj env s0 i = t.stateTraj env s0 j :=
+  pigeonhole_nat hN (t.stateTraj env s0)
 
 -- ============================================================
 -- 3. History confusion → error
@@ -137,7 +137,7 @@ theorem finite_discrimination (N : Nat) (hN : N > 0)
 /-- The full chain from Landauer to limitation.
 
     1. Landauer (axiom): bounded energy → state space Fin N.
-    2. Pigeonhole: N+1 steps → state collision (sorry).
+    2. Pigeonhole: N+1 steps → state collision.
     3. Determinism: same state + same input → same output.
     4. Confusion: if environment distinguishes confused histories → error.
 

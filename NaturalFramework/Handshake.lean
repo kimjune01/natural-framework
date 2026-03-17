@@ -7,9 +7,9 @@ import NaturalFramework.Contracts
 Formalizes the composition argument from
 [The Handshake](https://june.kim/the-handshake).
 
-The six roles are morphisms inside a monad, constrained by the data
-processing inequality. Five compose forward; Consolidate runs backward
-inside the substrate. This module formalizes:
+The six roles are stochastic kernels (`α → M β`) — morphisms in the
+Kleisli category of a probability monad. Five compose forward;
+Consolidate runs backward inside the substrate. This module formalizes:
 
 - The handshake property: postcondition of stage N is precondition of stage N+1
 - Cross-cycle coupling: Consolidate at k → Attend at k+1 through the policy store
@@ -59,14 +59,72 @@ structure PipelineHandshake (I : InterfaceTypes) where
 /-- The coupling lemma: a pipeline cycle preserves policy validity.
     If Consolidate preserves its postcondition, the handshake guarantees
     Attend's policy precondition holds on the next cycle.
-    This closes the gap in the inductive step. -/
-theorem cycle_preserves_policy
-    (h : PipelineHandshake I) (p : Pipeline I)
+
+    In the stochastic case: for all possible outputs of `cycle`,
+    the policy component satisfies the precondition. -/
+theorem cycle_preserves_policy [LawfulProbMonad M] [Monad M] [Support M]
+    (h : PipelineHandshake I) (p : Pipeline M I)
     (hcon : ∀ (pol : I.policy) (per : I.persisted),
-      h.consolidate_attend.post (p.consolidate pol per))
+      ∀ pol' : I.policy, Support.support (p.consolidate pol per) pol' →
+        h.consolidate_attend.post pol')
     (policy : I.policy) (input : I.raw)
-    : h.consolidate_attend.pre (p.cycle input policy).1 :=
-  h.consolidate_attend.compatible _ (hcon policy _)
+    : ∀ result : I.policy × I.persisted,
+        Support.support (p.cycle input policy) result →
+        h.consolidate_attend.pre result.1 := by
+  intro result hresult
+  simp [Pipeline.cycle, Pipeline.forward] at hresult
+  rw [Support.support_bind] at hresult
+  obtain ⟨ranked, _, hr2⟩ := hresult
+  rw [Support.support_bind] at hr2
+  obtain ⟨persisted, hper, hr3⟩ := hr2
+  rw [Support.support_bind] at hr3
+  obtain ⟨policy', hpol', hr4⟩ := hr3
+  rw [Support.support_pure] at hr4
+  subst hr4
+  exact h.consolidate_attend.compatible _ (hcon policy persisted policy' hpol')
+
+/-- Weaker form: `hcon` only needed for the specific input policy.
+    The cycle only invokes Consolidate with the policy it received.
+    Needed for up-induction on the tower (life_at_zero path),
+    where we only know `post` for the starting policy. -/
+theorem cycle_preserves_policy_at [LawfulProbMonad M] [Monad M] [Support M]
+    (h : PipelineHandshake I) (p : Pipeline M I)
+    (policy : I.policy) (input : I.raw)
+    (hcon : ∀ (per : I.persisted),
+      ∀ pol' : I.policy, Support.support (p.consolidate policy per) pol' →
+        h.consolidate_attend.post pol')
+    : ∀ result : I.policy × I.persisted,
+        Support.support (p.cycle input policy) result →
+        h.consolidate_attend.pre result.1 := by
+  intro result hresult
+  simp [Pipeline.cycle, Pipeline.forward] at hresult
+  rw [Support.support_bind] at hresult
+  obtain ⟨ranked, _, hr2⟩ := hresult
+  rw [Support.support_bind] at hr2
+  obtain ⟨persisted, _, hr3⟩ := hr2
+  rw [Support.support_bind] at hr3
+  obtain ⟨policy', hpol', hr4⟩ := hr3
+  rw [Support.support_pure] at hr4
+  subst hr4
+  exact h.consolidate_attend.compatible _ (hcon persisted policy' hpol')
+
+/-- Extract: any output policy of `cycle` came from Consolidate
+    applied to the input policy. Useful for tower decomposition. -/
+theorem cycle_consolidate_support [LawfulProbMonad M] [Monad M] [Support M]
+    (p : Pipeline M I) (input : I.raw) (policy : I.policy)
+    (result : I.policy × I.persisted)
+    (h : Support.support (p.cycle input policy) result)
+    : ∃ per, Support.support (p.consolidate policy per) result.1 := by
+  simp [Pipeline.cycle, Pipeline.forward] at h
+  rw [Support.support_bind] at h
+  obtain ⟨ranked, _, h2⟩ := h
+  rw [Support.support_bind] at h2
+  obtain ⟨persisted, _, h3⟩ := h2
+  rw [Support.support_bind] at h3
+  obtain ⟨policy', hpol', h4⟩ := h3
+  rw [Support.support_pure] at h4
+  subst h4
+  exact ⟨persisted, hpol'⟩
 
 -- ============================================================
 -- Ordering: rearranging steps breaks type compatibility
@@ -102,26 +160,30 @@ structure InfoMeasure (α : Type) where
     I(X;Z) ≤ I(X;Y). Each intermediate step can only decrease
     what downstream knows about the original input.
 
-    A morphism is non-expanding if it does not increase information. -/
-def NonExpanding (f : α → β) (mα : InfoMeasure α) (mβ : InfoMeasure β) : Prop :=
-  ∀ a : α, mβ.measure (f a) ≤ mα.measure a
+    A kernel is non-expanding if all possible outputs do not
+    increase information. Quantifies over support. -/
+def NonExpanding [Monad M] [Support M] (f : Kernel M α β) (mα : InfoMeasure α) (mβ : InfoMeasure β) : Prop :=
+  ∀ a : α, ∀ b : β, Support.support (f a) b → mβ.measure b ≤ mα.measure a
 
-/-- A lossy morphism strictly decreases information on at least one input. -/
-def StrictlyLossy (f : α → β) (mα : InfoMeasure α) (mβ : InfoMeasure β) : Prop :=
-  NonExpanding f mα mβ ∧ ∃ a : α, mβ.measure (f a) < mα.measure a
+/-- A lossy kernel strictly decreases information on at least one input. -/
+def StrictlyLossy [Monad M] [Support M] (f : Kernel M α β) (mα : InfoMeasure α) (mβ : InfoMeasure β) : Prop :=
+  NonExpanding f mα mβ ∧ ∃ a : α, ∃ b : β, Support.support (f a) b ∧ mβ.measure b < mα.measure a
 
-/-- Composing two non-expanding morphisms yields a non-expanding morphism.
+/-- Composing two non-expanding kernels yields a non-expanding kernel.
     This is the chain rule for information loss. -/
-theorem non_expanding_compose
-    {f : α → β} {g : β → γ}
+theorem non_expanding_compose [LawfulProbMonad M] [Monad M] [Support M]
+    {f : Kernel M α β} {g : Kernel M β γ}
     {mα : InfoMeasure α} {mβ : InfoMeasure β} {mγ : InfoMeasure γ}
     (hf : NonExpanding f mα mβ)
     (hg : NonExpanding g mβ mγ)
-    : NonExpanding (g ∘ f) mα mγ := by
-  intro a
-  calc mγ.measure (g (f a))
-      ≤ mβ.measure (f a) := hg (f a)
-    _ ≤ mα.measure a := hf a
+    : NonExpanding (Kernel.comp f g) mα mγ := by
+  intro a c hc
+  simp [Kernel.comp] at hc
+  rw [Support.support_bind] at hc
+  obtain ⟨b, hb, hcb⟩ := hc
+  calc mγ.measure c
+      ≤ mβ.measure b := hg b c hcb
+    _ ≤ mα.measure a := hf a b hb
 
 /-- The pipeline's net information: after six steps, information about
     the original input has decreased by the sum of all lossy steps.
@@ -222,46 +284,46 @@ theorem diversity_failures_independent
 -- ============================================================
 
 /-- Claim 1: If contracts match, algorithms are swappable.
-    Two morphisms with the same contract are interchangeable. -/
-theorem swappable
-    {f g : α → β} {c : Contract β}
+    Two kernels with the same contract are interchangeable. -/
+theorem swappable [Monad M] [Support M]
+    {f g : Kernel M α β} {c : Contract β}
     (hf : ContractPreserving f c) (hg : ContractPreserving g c)
     : ContractPreserving f c ∧ ContractPreserving g c :=
   ⟨hf, hg⟩
 
 /-- Claim 2: If any contract is broken, the loop dies.
-    A broken contract means some input produces output violating
+    A broken contract means some input can produce output violating
     the postcondition. Downstream receives invalid input. -/
-def ContractBroken (f : α → β) (c : Contract β) : Prop :=
-  ∃ a : α, ¬ c (f a)
+def ContractBroken [Monad M] [Support M] (f : Kernel M α β) (c : Contract β) : Prop :=
+  ∃ a : α, ∃ b : β, Support.support (f a) b ∧ ¬ c b
 
 /-- A broken contract propagates: if step N breaks its contract,
     step N+1 receives invalid input regardless of its own correctness.
-    The composition g ∘ f is not contract-preserving. -/
-theorem broken_propagates
-    {f : α → β}
+    The kernel is not contract-preserving. -/
+theorem broken_propagates [Monad M] [Support M]
+    {f : Kernel M α β}
     {pre : Contract β}
     (hbroken : ContractBroken f pre)
     : ¬ ContractPreserving f pre := by
-  obtain ⟨a, ha⟩ := hbroken
+  obtain ⟨a, b, hsup, hna⟩ := hbroken
   intro hcp
-  exact ha (hcp a)
+  exact hna (hcp a b hsup)
 
 /-- Claim 4: Iteration stability test.
-    If a morphism degrades its postcondition under self-composition,
+    If a kernel degrades its postcondition under self-composition,
     it is a near-miss. The postcondition fails after finitely many
     applications. -/
-def NearMiss (f : α → α) (c : Contract α) : Prop :=
-  ∃ a : α, c a ∧ ¬ c (f a)
+def NearMiss [Monad M] [Support M] (f : Kernel M α α) (c : Contract α) : Prop :=
+  ∃ a : α, c a ∧ ∃ b : α, Support.support (f a) b ∧ ¬ c b
 
-/-- An iteration-stable morphism is not a near-miss on any input
+/-- An iteration-stable kernel is not a near-miss on any input
     that already satisfies the contract. -/
-theorem stable_not_near_miss
-    {f : α → α} {c : Contract α}
+theorem stable_not_near_miss [Monad M] [Support M]
+    {f : Kernel M α α} {c : Contract α}
     (hstable : IterationStable f c)
     : ¬ NearMiss f c := by
-  intro ⟨a, ha, hna⟩
-  exact hna (hstable a ha)
+  intro ⟨a, ha, b, hsup, hna⟩
+  exact hna (hstable a ha b hsup)
 
 -- ============================================================
 -- Cross-domain Functor
@@ -289,25 +351,26 @@ structure PipelineFunctor (A B : InterfaceTypes) where
 
 /-- A functor preserves pipeline composition if mapping commutes
     with each role. This is the naturality condition.
-    Forward stages and backward pass both commute. -/
-def FunctorNatural (F : PipelineFunctor A B)
-    (pA : Pipeline A) (pB : Pipeline B) : Prop :=
+    Forward stages and backward pass both commute.
+    Equality via `Functor.map` inside `M`. -/
+def FunctorNatural [Monad M] [LawfulFunctor M] (F : PipelineFunctor A B)
+    (pA : Pipeline M A) (pB : Pipeline M B) : Prop :=
   -- Forward stages --
   -- Perceive commutes
-  (∀ r : A.raw, F.map_encoded (pA.perceive r) = pB.perceive (F.map_raw r)) ∧
+  (∀ r : A.raw, Functor.map F.map_encoded (pA.perceive r) = pB.perceive (F.map_raw r)) ∧
   -- Cache commutes
-  (∀ e : A.encoded, F.map_indexed (pA.cache e) = pB.cache (F.map_encoded e)) ∧
+  (∀ e : A.encoded, Functor.map F.map_indexed (pA.cache e) = pB.cache (F.map_encoded e)) ∧
   -- Filter commutes
-  (∀ i : A.indexed, F.map_selected (pA.filter i) = pB.filter (F.map_indexed i)) ∧
+  (∀ i : A.indexed, Functor.map F.map_selected (pA.filter i) = pB.filter (F.map_indexed i)) ∧
   -- Attend commutes
   (∀ (p : A.policy) (s : A.selected),
-    F.map_ranked (pA.attend p s) = pB.attend (F.map_policy p) (F.map_selected s)) ∧
+    Functor.map F.map_ranked (pA.attend p s) = pB.attend (F.map_policy p) (F.map_selected s)) ∧
   -- Remember commutes (forward: ranked → persisted)
-  (∀ r : A.ranked, F.map_persisted (pA.remember r) = pB.remember (F.map_ranked r)) ∧
+  (∀ r : A.ranked, Functor.map F.map_persisted (pA.remember r) = pB.remember (F.map_ranked r)) ∧
   -- Backward pass --
   -- Consolidate commutes (inside substrate: persisted → policy)
   (∀ (p : A.policy) (s : A.persisted),
-    F.map_policy (pA.consolidate p s) = pB.consolidate (F.map_policy p) (F.map_persisted s))
+    Functor.map F.map_policy (pA.consolidate p s) = pB.consolidate (F.map_policy p) (F.map_persisted s))
 
 -- ============================================================
 -- Trace: feedback loop
@@ -316,17 +379,17 @@ def FunctorNatural (F : PipelineFunctor A B)
 /-- The feedback trace: Remember's output type must be compatible
     with Perceive's input type for the loop to close.
     In the self-recursive case, persisted = raw. -/
-structure TracedPipeline (I : InterfaceTypes) extends Pipeline I where
+structure TracedPipeline (M : Type → Type) [Monad M] (I : InterfaceTypes) extends Pipeline M I where
   /-- The loop closes: persisted feeds back to raw -/
   feedback : I.persisted → I.raw
 
 /-- A traced pipeline can run autonomously given an initial input
     and policy. Each cycle feeds Remember's output back to Perceive. -/
-def TracedPipeline.run (tp : TracedPipeline I) (initial : I.raw)
-    (policy₀ : I.policy) (n : Nat) : I.policy :=
+def TracedPipeline.run [LawfulProbMonad M] (tp : TracedPipeline M I) (initial : I.raw)
+    (policy₀ : I.policy) (n : Nat) : M I.policy :=
   match n with
-  | 0 => policy₀
+  | 0 => pure policy₀
   | n + 1 =>
-    let (policy', persisted) := tp.toPipeline.cycle initial policy₀
-    let next_input := tp.feedback persisted
-    tp.run next_input policy' n
+    tp.toPipeline.cycle initial policy₀ >>= fun result =>
+    let next_input := tp.feedback result.2
+    tp.run next_input result.1 n

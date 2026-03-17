@@ -24,16 +24,21 @@ Tower height ≤ initial bit budget.
 | 0     | Passthrough (DPI floor, can't select)    |
 | d+1   | Inner pipeline cycle using depth-d tower |
 
-At each level, `cycle_preserves_policy` applies. The IH provides
-`hcon` (inner Consolidate preserves its postcondition). The base
-provides `hcon` trivially (passthrough). The hypothesis is derived,
-not assumed.
+## Two directions of induction
 
-## What this proves
+The foundation axiom is a disjunction: `life_at_zero ∨ attend_is_intentional`.
+Each side gives a different induction on the tower:
 
-`hcon` in `cycle_preserves_policy` (Handshake.lean) is not a free
-assumption. It's a consequence of the framework applied to itself,
-bottoming out at passthrough via the DPI.
+**Up-induction (life_at_zero)**: Observe life. Passthrough works (d=0).
+Build upward: if depth d preserves the postcondition for a given policy,
+so does depth d+1. The mechanism is constructed from the ground up.
+
+**Down-induction (attend_is_intentional)**: Purpose guarantees the
+postcondition holds universally. Every policy satisfies it by design.
+Tower preservation at every depth is immediate — no step-by-step
+construction needed. The mechanism is transparent to purpose.
+
+Both paths converge: the tower preserves at every depth.
 -/
 
 -- ============================================================
@@ -42,13 +47,20 @@ bottoming out at passthrough via the DPI.
 
 /-- At zero bits, Consolidate cannot select: passthrough.
     The data processing inequality guarantees this floor exists:
-    Filter is strictly lossy, so each level has fewer bits. -/
-def passthrough (pol : α) (_ : β) : α := pol
+    Filter is strictly lossy, so each level has fewer bits.
+    Returns `pure pol` — deterministic identity wrapped in `M`. -/
+def passthrough [Monad M] (pol : α) (_ : β) : M α := pure pol
 
-/-- Passthrough preserves any contract: output = input. -/
-theorem passthrough_preserves (c : Contract α) (pol : α) (per : β)
-    (hpol : c pol) : c (passthrough pol per) :=
-  hpol
+/-- Passthrough preserves any contract: output = input.
+    The only value in the support of `pure pol` is `pol`. -/
+theorem passthrough_preserves [LawfulProbMonad M] [Support M]
+    (c : Contract α) (pol : α) (per : β)
+    (hpol : c pol) : ∀ x : α, Support.support (passthrough (M := M) pol per) x → c x := by
+  intro x hx
+  simp [passthrough] at hx
+  rw [Support.support_pure] at hx
+  subst hx
+  exact hpol
 
 -- ============================================================
 -- DPI termination
@@ -78,88 +90,129 @@ theorem budget_strictly_decreases (initial d : Nat) (hd : d < initial) :
 -- The tower construction
 -- ============================================================
 
-/-- The recursive consolidation function.
+/-- The recursive consolidation kernel.
     At depth 0: passthrough (DPI floor).
     At depth d+1: encode (policy, persisted) as raw input,
     run inner pipeline's forward pass, remember, then apply
     inner consolidation (at depth d) to the result.
 
-    The encoding step at Perceive turns policy updates into raw
-    input — same types at every depth. -/
-def tower_consolidate {I : InterfaceTypes}
-    (base : Pipeline I)
+    Returns `M I.policy` — a stochastic kernel. -/
+def tower_consolidate [LawfulProbMonad M]
+    {I : InterfaceTypes}
+    (base : Pipeline M I)
     (encode : I.policy → I.persisted → I.raw)
-    : Nat → I.policy → I.persisted → I.policy
-  | 0, pol, _ => pol
+    : Nat → I.policy → I.persisted → M I.policy
+  | 0, pol, _ => pure pol
   | d + 1, pol, per =>
-    let inner : Pipeline I :=
+    let inner : Pipeline M I :=
       { base with consolidate := tower_consolidate base encode d }
-    (inner.cycle (encode pol per) pol).1
+    inner.cycle (encode pol per) pol >>= fun result =>
+    pure result.1
 
 /-- The pipeline at each depth of the tower.
     Shared forward stages from `base`. Consolidation varies by depth. -/
-def tower_pipeline {I : InterfaceTypes}
-    (base : Pipeline I)
+def tower_pipeline [LawfulProbMonad M]
+    {I : InterfaceTypes}
+    (base : Pipeline M I)
     (encode : I.policy → I.persisted → I.raw)
-    (d : Nat) : Pipeline I :=
+    (d : Nat) : Pipeline M I :=
   { base with consolidate := tower_consolidate base encode d }
 
 -- ============================================================
--- Contract preservation through the tower
+-- Up-induction: the life_at_zero path
 -- ============================================================
 
-/-- At every depth, the tower's consolidation preserves the
-    cross-cycle postcondition. Induction on the bit budget:
+/-- Up-induction on the tower. Corresponds to the `life_at_zero`
+    reading of the foundation axiom.
 
-    - Base (d = 0): passthrough. Trivially preserves.
-    - Step (d+1): the inner consolidation (depth d) preserves by IH.
-      The inner pipeline has valid handshakes (same `base` + depth-d
-      consolidation). `cycle_preserves_policy` gives: inner pipeline's
-      cycle output satisfies the postcondition. Therefore: depth-(d+1)
-      consolidation preserves.
+    Start at passthrough (d=0): output = input, trivially preserves.
+    Build upward: if depth d preserves the postcondition for a given
+    policy, so does depth d+1. At d+1, the cycle invokes Consolidate
+    with the same policy it received — so the IH applies.
 
-    This turns `hcon` in `cycle_preserves_policy` from an assumption
-    into a consequence of the tower bottoming out at passthrough. -/
-theorem tower_preserves_post {I : InterfaceTypes}
-    (base : Pipeline I) (encode : I.policy → I.persisted → I.raw)
+    This is the constructive path: observe life, build the mechanism
+    step by step from the DPI floor. -/
+theorem tower_preserves_up [LawfulProbMonad M] [Support M]
+    {I : InterfaceTypes}
+    (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)
     : ∀ (d : Nat) (pol : I.policy) (per : I.persisted),
         h.consolidate_attend.post pol →
-        h.consolidate_attend.post
-          (tower_consolidate base encode d pol per) := by
+        ∀ pol' : I.policy,
+          Support.support (tower_consolidate (M := M) base encode d pol per) pol' →
+          h.consolidate_attend.post pol' := by
   intro d
   induction d with
   | zero =>
-    -- Passthrough: output = input, trivially preserves
-    intro pol per hpol
-    simp [tower_consolidate]
+    -- Passthrough: support of `pure pol` is `{pol}`
+    intro pol per hpol pol' hsup
+    simp [tower_consolidate] at hsup
+    rw [Support.support_pure] at hsup
+    subst hsup
     exact hpol
   | succ n ih =>
-    -- Inner consolidation preserves by IH.
-    -- Outer = inner applied to forward-pass results.
-    intro pol per hpol
-    simp only [tower_consolidate, Pipeline.cycle, Pipeline.forward]
-    exact ih pol _ hpol
+    -- tower(n+1) pol per = inner.cycle(encode pol per, pol) >>= pure ∘ fst
+    -- Decompose: pol' came from the cycle, which invoked tower(n) with pol
+    intro pol per hpol pol' hsup
+    simp only [tower_consolidate] at hsup
+    -- Peel off the outer bind: cycle >>= pure ∘ fst
+    rw [Support.support_bind] at hsup
+    obtain ⟨result, hresult, hpure⟩ := hsup
+    rw [Support.support_pure] at hpure
+    subst hpure
+    -- result came from inner.cycle; extract that result.1 came from consolidate
+    have ⟨per', hper'⟩ := cycle_consolidate_support
+      { base with consolidate := tower_consolidate base encode n }
+      (encode pol per) pol result hresult
+    -- per' witnesses: support(tower(n) pol per') result.1
+    -- IH: post pol → post result.1
+    exact ih pol per' hpol result.1 hper'
 
-/-- The tower pipeline preserves the handshake at every depth.
-    Corollary of `tower_preserves_post` for the pipeline form. -/
-theorem tower_pipeline_preserves {I : InterfaceTypes}
-    (base : Pipeline I) (encode : I.policy → I.persisted → I.raw)
+-- ============================================================
+-- Down-induction: the attend_is_intentional path
+-- ============================================================
+
+/-- Down-induction on the tower. Corresponds to the
+    `attend_is_intentional` reading of the foundation axiom.
+
+    If the postcondition holds universally — every policy satisfies
+    it, because the universe's Attend is intentional and selection is
+    purposeful — then the tower preserves at every depth. No
+    step-by-step construction is needed.
+
+    This is the teleological path: purpose guarantees the mechanism.
+    The up direction needs induction; the down direction needs only
+    the premise. Purpose makes the mechanism transparent. -/
+theorem tower_preserves_down [LawfulProbMonad M] [Support M]
+    {I : InterfaceTypes}
+    (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)
-    (d : Nat) (pol : I.policy) (per : I.persisted)
-    (hpol : h.consolidate_attend.post pol)
-    : h.consolidate_attend.post
-        ((tower_pipeline base encode d).consolidate pol per) :=
-  tower_preserves_post base encode h d pol per hpol
+    (hpost_all : ∀ pol : I.policy, h.consolidate_attend.post pol)
+    : ∀ (d : Nat) (pol : I.policy) (per : I.persisted)
+        (pol' : I.policy),
+        Support.support (tower_consolidate (M := M) base encode d pol per) pol' →
+        h.consolidate_attend.post pol' :=
+  fun _ _ _ pol' _ => hpost_all pol'
 
-/-- The coupling lemma's hypothesis `hcon` is satisfied at every depth.
-    This is what cycle_preserves_policy needs. No longer an assumption. -/
-theorem tower_satisfies_hcon {I : InterfaceTypes}
-    (base : Pipeline I) (encode : I.policy → I.persisted → I.raw)
+-- ============================================================
+-- Combined: tower preservation under either reading
+-- ============================================================
+
+/-- The coupling lemma's hypothesis `hcon` is satisfied at every depth
+    under either reading of the foundation.
+
+    - `life_at_zero`: supply `post pol` for the starting policy
+    - `attend_is_intentional`: supply `∀ pol, post pol`
+
+    Either way, the tower preserves and `cycle_preserves_policy` applies. -/
+theorem tower_satisfies_hcon [LawfulProbMonad M] [Support M]
+    {I : InterfaceTypes}
+    (base : Pipeline M I) (encode : I.policy → I.persisted → I.raw)
     (h : PipelineHandshake I)
     (d : Nat)
     (hpost_all : ∀ pol : I.policy, h.consolidate_attend.post pol)
     : ∀ (pol : I.policy) (per : I.persisted),
-        h.consolidate_attend.post
-          ((tower_pipeline base encode d).consolidate pol per) :=
-  fun pol per => tower_pipeline_preserves base encode h d pol per (hpost_all pol)
+        ∀ pol' : I.policy,
+          Support.support ((tower_pipeline (M := M) base encode d).consolidate pol per) pol' →
+          h.consolidate_attend.post pol' :=
+  fun _ _ pol' _ => hpost_all pol'
