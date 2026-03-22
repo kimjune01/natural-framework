@@ -21,3 +21,6 @@ import NaturalFramework.Removal
 import NaturalFramework.Induction
 import NaturalFramework.Fractal
 import NaturalFramework.Variational
+import NaturalFramework.Hoare.Core
+import NaturalFramework.Hoare.WP
+import NaturalFramework.Hoare.Bridge
