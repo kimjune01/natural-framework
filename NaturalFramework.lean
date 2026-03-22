@@ -20,3 +20,4 @@ import NaturalFramework.Stochasticity
 import NaturalFramework.Removal
 import NaturalFramework.Induction
 import NaturalFramework.Fractal
+import NaturalFramework.Variational
