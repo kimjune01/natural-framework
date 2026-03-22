@@ -18,6 +18,8 @@ The Lean proofs **do** establish:
 - Recursive consolidation preserves postconditions under both induction directions, with budget termination (`Fractal.lean`)
 - Each of the six interfaces is independently necessary for life to persist (`Induction.lean`)
 - Deterministic finite transducers have bounded discrimination via pigeonhole (`Stochasticity.lean` + `Pigeonhole.lean`)
+- Hoare triples over monadic kernels: consequence, composition, weakest precondition (`Hoare/`)
+- Consolidate and Filter contracts follow from discrete optimization; Attend from feasibility (`Variational.lean`)
 
 The Lean proofs **do not** establish:
 - That the six roles are the *only possible* decomposition — the roles are built into the type vocabulary, not derived from axioms alone
@@ -44,6 +46,10 @@ The Lean proofs **do not** establish:
 | `Removal.lean` | Ten-conjunct falsification table: remove any postcondition, system dies |
 | `Induction.lean` | `SystemModel` structure (bundles all axioms), foundation disjunction, `life_persists`, `interface_necessary` for all six roles |
 | `Fractal.lean` | Recursive consolidation tower, budget termination, `tower_preserves_post` over support |
+| `Variational.lean` | Consolidate and Filter contracts derived as optimality conditions, Attend packaged from feasibility constraints |
+| `Hoare/Core.lean` | Hoare triples for monadic kernels, rule of consequence, sequential composition |
+| `Hoare/Bridge.lean` | Bridge to contracts: contract preservation as a Hoare triple, handshake composition via triple rule |
+| `Hoare/WP.lean` | Weakest precondition transformer, equivalence with triples, distribution over composition |
 
 ## What compiles
 
