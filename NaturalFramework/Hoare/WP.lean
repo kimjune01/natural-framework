@@ -19,7 +19,7 @@ The weakest precondition transformer for monadic kernels.
 def wp [Monad M] [Support M] (f : Kernel M α β) (Q : β → Prop) : α → Prop :=
   fun a => ∀ b, Support.support (f a) b → Q b
 
-/-- A Hoare triple holds iff the precondition entails the wp. -/
+/-- Definitional: Triple and wp unfold to the same quantifier. -/
 theorem triple_iff_wp [Monad M] [Support M]
     {P : α → Prop} {f : Kernel M α β} {Q : β → Prop}
     : Triple P f Q ↔ ∀ a, P a → wp f Q a := by
@@ -44,7 +44,7 @@ theorem wp_comp [Monad M] [LawfulMonad M] [Support M]
     obtain ⟨b, hb, hcb⟩ := hc
     exact h b hb c hcb
 
-/-- wp of the identity kernel is the postcondition itself. -/
+/-- wp of identity unfolds to the postcondition via support_pure. -/
 theorem wp_id [Monad M] [Support M] (Q : α → Prop)
     : wp (Kernel.id (M := M)) Q = Q := by
   funext a

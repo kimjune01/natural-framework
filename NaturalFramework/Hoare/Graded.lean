@@ -52,11 +52,9 @@ def GradedTriple [Monad M] [Support M]
   ∀ a : α, P a → ∀ b : β, Support.support (f a) b →
     mα.measure a ≤ mβ.measure b + g.cost
 
-/-- Contract preservation + non-expansion is exactly a graded triple
-    with trivial precondition. The grade is the worst-case information loss.
-
-    This is the bridge to Gaboardi et al. (2021): their graded Hoare
-    postcondition IS our ContractPreserving + NonExpanding. -/
+/-- One direction: ContractPreserving + a supplied cost bound → GradedTriple.
+    Does not prove the converse. Does not establish worst-case optimality
+    of the bound. The grade `g` is whatever the caller supplies. -/
 theorem graded_contract_bridge [Monad M] [Support M]
     {f : Kernel M α β} {Q : Contract β}
     {mα : InfoMeasure α} {mβ : InfoMeasure β} {g : Grade}

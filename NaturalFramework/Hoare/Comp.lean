@@ -38,12 +38,10 @@ structure PipelineTriples (M : Type → Type) [Monad M] [Support M]
   h_attend : ∀ pol : I.policy, Triple Q_selected (p.attend pol) Q_ranked
 
 -- ============================================================
--- Two-stage composition: tighter than contract_composition_base
+-- Multi-stage composition (convenience wrappers around triple_comp)
 -- ============================================================
 
-/-- Two stages compose with real preconditions.
-    Stage 1's postcondition is stage 2's precondition.
-    This is `triple_comp` applied — restated for clarity. -/
+/-- Alias for `triple_comp`. -/
 theorem two_stage_comp [Monad M] [LawfulMonad M] [Support M]
     {f : Kernel M α β} {g : Kernel M β γ}
     {P : α → Prop} {R : β → Prop} {Q : γ → Prop}
@@ -55,8 +53,7 @@ theorem two_stage_comp [Monad M] [LawfulMonad M] [Support M]
 -- Three-stage chain
 -- ============================================================
 
-/-- Three stages chain: {P} f {R1}, {R1} g {R2}, {R2} h {Q}
-    implies {P} f;g;h {Q}. -/
+/-- Three-stage triple_comp. -/
 theorem three_stage_comp [Monad M] [LawfulMonad M] [Support M]
     {f : Kernel M α β} {g : Kernel M β γ} {h : Kernel M γ δ}
     {P : α → Prop} {R1 : β → Prop} {R2 : γ → Prop} {Q : δ → Prop}
@@ -68,8 +65,7 @@ theorem three_stage_comp [Monad M] [LawfulMonad M] [Support M]
 -- Four-stage chain (the full forward pipeline minus attend)
 -- ============================================================
 
-/-- Four stages chain: perceive → cache → filter → attend.
-    Each handshake threads the postcondition forward. -/
+/-- Four-stage triple_comp. Generic — not specific to pipeline stages. -/
 theorem four_stage_comp [Monad M] [LawfulMonad M] [Support M]
     {f1 : Kernel M α β} {f2 : Kernel M β γ}
     {f3 : Kernel M γ δ} {f4 : Kernel M δ ε}
@@ -89,19 +85,16 @@ def Pipeline.forwardKernel [Monad M] (p : Pipeline M I) (policy : I.policy)
     : Kernel M I.raw I.ranked :=
   Kernel.comp (Kernel.comp (Kernel.comp p.perceive p.cache) p.filter) (p.attend policy)
 
-/-- The full forward pipeline satisfies `{P_raw} forward {Q_ranked}`
-    when each stage satisfies its triple and the handshakes connect.
-
-    This is the COMP rule applied four times — the restricted pointwise
-    order from Kura et al. (2026), verified end-to-end. -/
+/-- The forward pipeline satisfies `{P_raw} forward {Q_ranked}`
+    when each stage satisfies its triple. Applies four_stage_comp
+    to the pipeline's specific stages. -/
 theorem forward_triple [Monad M] [LawfulMonad M] [Support M]
     {I : InterfaceTypes} {p : Pipeline M I}
     (t : PipelineTriples M I p) (policy : I.policy)
     : Triple t.P_raw (p.forwardKernel policy) t.Q_ranked :=
   four_stage_comp t.h_perceive t.h_cache t.h_filter (t.h_attend policy)
 
-/-- The forward pipeline's kernel agrees with `Pipeline.forward`
-    on all inputs. Both compute the same Kleisli composition. -/
+/-- Definitional: `forwardKernel` and `Pipeline.forward` unfold to the same bind chain. -/
 theorem forwardKernel_eq_forward [Monad M] [LawfulMonad M] [Support M]
     (p : Pipeline M I) (policy : I.policy) (input : I.raw)
     : p.forwardKernel policy input = p.forward input policy := by

@@ -14,7 +14,8 @@ of `Triple`, and that handshakes compose via the triple rule.
 - `triple_counterexample` — nontriviality: a kernel can fail a triple
 -/
 
-/-- Contract preservation is exactly a Hoare triple with precondition `True`. -/
+/-- Contract preservation restated as a Hoare triple with precondition `True`.
+    Definitional — both sides unfold to the same quantifier structure. -/
 theorem contract_is_triple [Monad M] [Support M]
     {f : Kernel M α β} {Q : Contract β}
     : ContractPreserving f Q ↔ Triple (fun _ => True) f Q := by
