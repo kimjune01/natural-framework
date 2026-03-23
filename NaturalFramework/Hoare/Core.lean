@@ -56,3 +56,24 @@ theorem triple_skip [Monad M] [Support M]
   rw [Support.support_pure] at hsup
   subst hsup
   exact hpa
+
+/-- AND rule: if f preserves Q and R separately, it preserves both. -/
+theorem triple_post_and [Monad M] [Support M]
+    {P : α → Prop} {Q R : β → Prop} {f : Kernel M α β}
+    (hQ : Triple P f Q) (hR : Triple P f R)
+    : Triple P f (fun b => Q b ∧ R b) := by
+  intro a ha b hb
+  constructor
+  · exact hQ a ha b hb
+  · exact hR a ha b hb
+
+/-- OR rule: if f satisfies the triple from P₁ and from P₂,
+    it satisfies it from their disjunction. -/
+theorem triple_pre_or [Monad M] [Support M]
+    {P₁ P₂ : α → Prop} {Q : β → Prop} {f : Kernel M α β}
+    (h1 : Triple P₁ f Q) (h2 : Triple P₂ f Q)
+    : Triple (fun a => P₁ a ∨ P₂ a) f Q := by
+  intro a ha b hb
+  obtain (h | h) := ha
+  · exact h1 a h b hb
+  · exact h2 a h b hb

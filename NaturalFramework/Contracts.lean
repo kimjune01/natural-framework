@@ -99,3 +99,24 @@ theorem contract_composition_base [Monad M] [LawfulMonad M] [Support M]
   rw [Support.support_bind] at hc
   obtain ⟨b, _, hcb⟩ := hc
   exact hg b c hcb
+
+/-- Conjunction: if f preserves Q and R, it preserves both. -/
+theorem contractPreserving_post_and [Monad M] [Support M]
+    {f : Kernel M α β} {Q R : Contract β}
+    (hQ : ContractPreserving f Q) (hR : ContractPreserving f R)
+    : ContractPreserving f (fun b => Q b ∧ R b) := by
+  intro a b hb
+  constructor
+  · exact hQ a b hb
+  · exact hR a b hb
+
+/-- If f is iteration-stable for c and d, it is iteration-stable for c ∧ d. -/
+theorem iterationStable_and [Monad M] [Support M]
+    {f : Kernel M α α} {c d : Contract α}
+    (hc : IterationStable f c) (hd : IterationStable f d)
+    : IterationStable f (fun a => c a ∧ d a) := by
+  intro a ha b hb
+  obtain ⟨hca, hda⟩ := ha
+  constructor
+  · exact hc a hca b hb
+  · exact hd a hda b hb
