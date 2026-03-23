@@ -50,6 +50,10 @@ The Lean proofs **do not** establish:
 | `Hoare/Core.lean` | Hoare triples for monadic kernels, rule of consequence, sequential composition |
 | `Hoare/Bridge.lean` | Bridge to contracts: contract preservation as a Hoare triple, handshake composition via triple rule |
 | `Hoare/WP.lean` | Weakest precondition transformer, equivalence with triples, distribution over composition |
+| `Hoare/Comp.lean` | Full pipeline composition: chains four COMP rules through real pre/postconditions (Kura's restricted pointwise order) |
+| `Hoare/Graded.lean` | Graded Hoare triples with Nat cost bounds. Additive composition. Simplified analog of Gaboardi (ESOP 2021) — see status notes in file |
+| `Hoare/Effects.lean` | Boolean contracts as {0,1}-valued effects. Embedding only — not a full effect algebra formalization (Cho-Jacobs 2015) |
+| `Hoare/Static.lean` | IterationStable = Hoare triple {c} f {c}. StaticOn → IterationStable. Splitting factorization (Fritz Prop 4.4.1) is a placeholder |
 
 ## What compiles
 
@@ -63,6 +67,19 @@ lake build
 
 Requires [Lean 4](https://lean-lang.org/) via [elan](https://github.com/leanprover/elan).
 
+## Related formalizations
+
+As of March 2026, no Lean 4 formalization exists for:
+
+- **Fritz's Markov categories** (copy-discard, determinism test, possibilistic shadow). [Mathlib has Markov kernels](https://arxiv.org/abs/2510.04070) for measure-theoretic probability but not Fritz's synthetic categorical approach.
+- **Gaboardi's graded Freyd categories** (graded Hoare logic with categorical semantics). Our `Graded.lean` uses Nat grades, not preordered monoids.
+- **Cho-Jacobs effect algebras** (partial addition, orthocomplement, Born rule). Our `Effects.lean` embeds Boolean contracts but doesn't formalize the algebra axioms.
+- **Fritz's static idempotent splitting** (Prop 4.4.1). Our `Static.lean` characterizes the gap but doesn't close it.
+
+[LeanCat](https://arxiv.org/abs/2512.24796) benchmarks formal category theory in Lean. [LeanFibredCategories](https://github.com/sinhp/LeanFibredCategories) formalizes fibred categories. Neither covers the crosswalk this artifact addresses.
+
+These gaps are open formalization problems — contributions welcome.
+
 ## References
 
 - [The Natural Framework](https://june.kim/the-natural-framework) — the derivation
@@ -70,6 +87,9 @@ Requires [Lean 4](https://lean-lang.org/) via [elan](https://github.com/leanprov
 - [The Parts Bin](https://june.kim/the-parts-bin) — algorithm catalog
 - [Metacognition Experiment](https://github.com/kimjune01/metacognition) — Bayesian adaptive test of framework utility for LLMs
 - [Fidelity Study](https://github.com/kimjune01/natural-framework-fidelity) — comparative fidelity test against IPO, OODA, Intelligence Cycle
+
+- [Framework Lexicon](https://june.kim/framework-lexicon) — vocabulary crosswalk across communities
+- [Natural Breadcrumbs](https://june.kim/natural-breadcrumbs/) — interactive paper decoder with runnable Python/Scheme examples
 
 ## License
 
