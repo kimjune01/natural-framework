@@ -60,11 +60,12 @@ axiom rate_mismatch :
 -- Axiom 3: Non-stationarity
 -- ============================================================
 
-/-- Environments change. Modeled as: the required response at some
-    time t differs from what it was at time t + p for any period p.
+/-- Environments change. Modeled as: for a given period p, there exists
+    some time t where the required response differs from time t + p.
 
-    This is a condition on specific environments, not a universal law.
-    We state it as a property that environments can have.
+    This is a condition on specific environments at a specific period,
+    not a universal claim. Non-stationarity at all periods would require
+    `∀ p, NonStationary required p`.
 
     Reject → environment is periodic → periodic behavior suffices →
     stochasticity is optional. -/

@@ -24,3 +24,7 @@ import NaturalFramework.Variational
 import NaturalFramework.Hoare.Core
 import NaturalFramework.Hoare.WP
 import NaturalFramework.Hoare.Bridge
+import NaturalFramework.Hoare.Comp
+import NaturalFramework.Hoare.Graded
+import NaturalFramework.Hoare.Effects
+import NaturalFramework.Hoare.Static
