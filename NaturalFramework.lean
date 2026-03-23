@@ -30,3 +30,4 @@ import NaturalFramework.Hoare.Effects
 import NaturalFramework.Hoare.Static
 import NaturalFramework.Hoare.Divergence
 import NaturalFramework.SupportMonadMorphism
+import NaturalFramework.Hoare.Fibration
