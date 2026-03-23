@@ -28,3 +28,4 @@ import NaturalFramework.Hoare.Comp
 import NaturalFramework.Hoare.Graded
 import NaturalFramework.Hoare.Effects
 import NaturalFramework.Hoare.Static
+import NaturalFramework.Hoare.Divergence
