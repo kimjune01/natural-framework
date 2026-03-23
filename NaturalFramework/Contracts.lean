@@ -43,7 +43,18 @@ def ContractPreserving [Monad M] [Support M] (f : Kernel M α β) (contract : Co
 def IterationStable [Monad M] [Support M] (f : Kernel M α α) (contract : Contract α) : Prop :=
   ∀ a : α, contract a → ∀ b : α, Support.support (f a) b → contract b
 
-/-- Filter contract: output is strictly smaller than input. -/
+/-- Filter contract: output is strictly smaller than input.
+
+    Note: FilterContract uses a generic `Kernel M α α`, not restricted to
+    deterministic morphisms. The narrative claim "Filter is deterministic"
+    (same input → same gate) is a design assumption motivated by
+    IterationStable — a stochastic filter would randomly accept/reject
+    the same item across cycles. But this assumption is not enforced here.
+    A stochastic filter would still compose; it would just lack stability.
+
+    Fritz's C_det (copy-natural subcategory) gives the formal criterion:
+    a morphism is deterministic iff it commutes with copy. This could be
+    added as an optional field but is not currently required. -/
 structure FilterContract (M : Type → Type) [Monad M] [Support M] (α : Type) [SizeOf α] where
   /-- The filter kernel -/
   filter : Kernel M α α
