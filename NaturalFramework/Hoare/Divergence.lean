@@ -11,13 +11,14 @@ metric on morphism spaces. NonExpanding is the zero-divergence case —
 the morphism doesn't increase the measure. Stating it as a family of
 Hoare triples connects the metric view to the program logic view.
 
-## Status: Exact (for the threshold characterization)
+## Status: Plausible bridge to Sato-Katsumata
 
-The equivalence is tight: NonExpanding ↔ ∀ n, {measure ≤ n} f {measure ≤ n}.
-This is not the full Sato-Katsumata divergence framework (which uses
-arbitrary V-enrichment), but it exactly characterizes NonExpanding in
-terms of Hoare triples. The composition theorem follows from existing
-`non_expanding_compose`.
+The equivalence is tight internally: NonExpanding ↔ ∀ n, {measure ≤ n} f {measure ≤ n}.
+But this is a unary threshold characterization, not a formal instance of
+Sato-Katsumata's relational divergence framework. Their divergences compare
+two morphisms (Δ : T(I) × T(I) → Q) with graded relational liftings.
+Ours compares one morphism's input/output measures. Analogous in spirit,
+not in formal structure.
 -/
 
 /-- NonExpanding is equivalent to preserving all information-threshold
